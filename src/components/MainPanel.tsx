@@ -334,6 +334,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [inlineMedia, setInlineMedia] = useState<Record<string, EphemeralOpenResult & { id: string }>>({})
   const [openTranscripts, setOpenTranscripts] = useState<Set<string>>(new Set())
   const [showAttachMenu, setShowAttachMenu] = useState(false)
+  const [showContactPicker, setShowContactPicker] = useState(false)
+  const [shareableContacts, setShareableContacts] = useState<{ id: string; username: string; display_name: string | null; avatar_url: string | null; email: string }[]>([])
   const [pendingFilePreviewUrl, setPendingFilePreviewUrl] = useState<string | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const requestedInlineRef = useRef<Set<string>>(new Set())
@@ -451,14 +453,16 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
     async function load() {
       if (!conversation) return
-      await loadMembers()
 
-      const { data: recentDesc } = await supabase
-        .from('messages')
-        .select('*, message_replays(events), ephemeral_media(*, ephemeral_media_views(*))')
-        .eq('conversation_id', conversation.id)
-        .order('created_at', { ascending: false })
-        .limit(200)
+      const [, { data: recentDesc }] = await Promise.all([
+        loadMembers(),
+        supabase
+          .from('messages')
+          .select('*, message_replays(events), ephemeral_media(*, ephemeral_media_views(*))')
+          .eq('conversation_id', conversation.id)
+          .order('created_at', { ascending: false })
+          .limit(200),
+      ])
       const msgs = recentDesc ? [...recentDesc].reverse() : null
 
       if (!cancelled && msgs) {
@@ -663,14 +667,37 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     postSystemMessage(`${displayName(me)} mandou um wink (${winkLabel})`)
   }
 
-  async function sendContactCard() {
-    if (!me || !conversation) return
+  async function openContactPicker() {
+    if (!me) return
     setShowAttachMenu(false)
+    const { data, error } = await supabase
+      .from('friend_requests')
+      .select(
+        'from_id, to_id, from_profile:profiles!friend_requests_from_id_fkey(id, username, display_name, avatar_url, email), to_profile:profiles!friend_requests_to_id_fkey(id, username, display_name, avatar_url, email)',
+      )
+      .eq('status', 'accepted')
+      .or(`from_id.eq.${me.id},to_id.eq.${me.id}`)
+    if (error) {
+      console.error('openContactPicker failed', error)
+      setShareableContacts([])
+    } else {
+      setShareableContacts(
+        (data || [])
+          .map((row: any) => (row.from_id === me.id ? row.to_profile : row.from_profile))
+          .filter(Boolean),
+      )
+    }
+    setShowContactPicker(true)
+  }
+
+  async function sendContactCard(target: { id: string; username: string; display_name: string | null; avatar_url: string | null; email: string }) {
+    if (!me || !conversation) return
+    setShowContactPicker(false)
     try {
       const content = JSON.stringify({
-        name: displayName(me),
-        email: me.email,
-        avatarUrl: me.avatar_url ?? null,
+        name: target.display_name || target.username,
+        email: target.email,
+        avatarUrl: target.avatar_url ?? null,
       })
       const { error } = await supabase
         .from('messages')
@@ -835,15 +862,22 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
   async function loadInviteFriends() {
     if (!me) return
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('friend_requests')
       .select(
         'from_id, to_id, from_profile:profiles!friend_requests_from_id_fkey(id, username, display_name, avatar_url, email), to_profile:profiles!friend_requests_to_id_fkey(id, username, display_name, avatar_url, email)',
       )
       .eq('status', 'accepted')
       .or(`from_id.eq.${me.id},to_id.eq.${me.id}`)
+    if (error) {
+      console.error('loadInviteFriends failed', error)
+      setInviteFriends([])
+      return
+    }
     setInviteFriends(
-      (data || []).map((row: any) => (row.from_id === me.id ? row.to_profile : row.from_profile)),
+      (data || [])
+        .map((row: any) => (row.from_id === me.id ? row.to_profile : row.from_profile))
+        .filter(Boolean),
     )
   }
 
@@ -1263,11 +1297,10 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         const recorder = new MediaRecorder(stream)
         mediaRecorderRef.current = recorder
 
-        const autoTranscribe = localStorage.getItem('flux-auto-transcribe') !== '0'
         const SpeechRecognitionCtor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
         let recognition: SpeechRecognitionLike | null = null
         let transcript = ''
-        if (autoTranscribe && SpeechRecognitionCtor) {
+        if (SpeechRecognitionCtor) {
           const r: SpeechRecognitionLike = new SpeechRecognitionCtor()
           r.lang = 'pt-BR'
           r.continuous = true
@@ -2043,7 +2076,31 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             <button type="button" onClick={() => mediaInputRef.current?.click()}>Fotos e vídeos</button>
             <button type="button" onClick={() => audioInputRef.current?.click()}>Áudio</button>
             <button type="button" onClick={() => docInputRef.current?.click()}>Documento</button>
-            <button type="button" onClick={sendContactCard}>Contato</button>
+            <button type="button" onClick={openContactPicker}>Contato</button>
+          </div>
+        )}
+
+        {showContactPicker && (
+          <div className="modal-backdrop" onClick={() => setShowContactPicker(false)}>
+            <div className="modal-card group-info-card" onClick={(e) => e.stopPropagation()}>
+              <h2>Compartilhar contato</h2>
+              <div className="chat-config-members">
+                {shareableContacts.length === 0 && (
+                  <span style={{ fontSize: '.8rem', color: '#8696a0' }}>você ainda não tem amigos</span>
+                )}
+                {shareableContacts.map((f) => (
+                  <div key={f.id} className="chat-config-row" style={{ cursor: 'pointer' }} onClick={() => sendContactCard(f)}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <div className="photo" style={{ width: 32, height: 32, flexShrink: 0 }}>
+                        {f.avatar_url ? <img src={f.avatar_url} alt="" /> : (f.username[0] || '?').toUpperCase()}
+                      </div>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.display_name || f.username}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button type="button" onClick={() => setShowContactPicker(false)} style={{ marginTop: 10 }}>cancelar</button>
+            </div>
           </div>
         )}
 

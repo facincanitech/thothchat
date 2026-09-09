@@ -58,6 +58,26 @@ export async function registerPushNotifications(userId: string) {
     lights: true,
   }).catch(() => {})
 
+  await LocalNotifications.registerActionTypes({
+    types: [
+      {
+        id: 'MESSAGE_REPLY',
+        actions: [{ id: 'reply', title: 'Responder', input: true }],
+      },
+    ],
+  }).catch(() => {})
+
+  await LocalNotifications.addListener('localNotificationActionPerformed', async (action) => {
+    if (action.actionId !== 'reply') return
+    const text = (action.inputValue || '').trim()
+    const conversationId = (action.notification.extra as { conversationId?: string } | undefined)?.conversationId
+    if (!text || !conversationId) return
+    const { data: userData } = await supabase.auth.getUser()
+    const authorId = userData?.user?.id
+    if (!authorId) return
+    await supabase.from('messages').insert({ conversation_id: conversationId, author_id: authorId, content: text, kind: 'text' })
+  })
+
   await PushNotifications.addListener('registration', async (token) => {
     await supabase
       .from('push_tokens')
@@ -83,6 +103,9 @@ export async function registerPushNotifications(userId: string) {
           title: notification.title || 'ThothChat',
           body: notification.body || '',
           channelId: isCall ? 'flux_calls' : 'flux_messages',
+          ...(!isCall && data?.conversationId
+            ? { actionTypeId: 'MESSAGE_REPLY', extra: { conversationId: data.conversationId } }
+            : {}),
         },
       ],
     }).catch(() => {})

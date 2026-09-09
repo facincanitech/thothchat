@@ -111,6 +111,7 @@ body{
 .chats{
   width:clamp(310px,26vw,356px);background:var(--bg-panel);border-right:1px solid var(--line);
   display:flex;flex-direction:column;flex-shrink:0;position:relative;overflow:hidden;min-height:0;
+  zoom:var(--ui-zoom,1);
 }
 .top{
   min-height:94px;display:flex;align-items:center;padding:18px 22px;
@@ -153,6 +154,7 @@ body{
   border-radius:10px;padding:8px 10px 8px 2px;font-size:12px;font-weight:600;cursor:pointer;
 }
 .filter-tab.active .filter{color:var(--on-button,var(--accent-text))}
+.filter-tab.active .filter-grip{color:var(--on-button,var(--accent-text))}
 .chat-list{overflow:auto;flex:1;min-height:0;padding:0 8px 14px;scrollbar-gutter:stable}
 .chat{
   min-height:76px;display:flex;align-items:center;padding:13px 12px;gap:12px;
@@ -189,7 +191,7 @@ body{
 .chat-list .empty-cta button{display:inline-flex;align-items:center;gap:6px}
 
 /* main chat */
-.main{flex:1;display:flex;flex-direction:column;background:var(--bg-deep);min-width:0;min-height:0}
+.main{flex:1;display:flex;flex-direction:column;background:var(--bg-deep);min-width:0;min-height:0;zoom:var(--ui-zoom,1)}
 .chat-header{
   min-height:84px;background:var(--rail-bg,var(--bg-surface));color:var(--rail-icon,inherit);border-bottom:1px solid var(--line);
   display:flex;align-items:center;padding:14px 28px;gap:13px;flex-shrink:0;
@@ -230,7 +232,6 @@ body{
 
 .messages{
   flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:30px max(28px,calc((100% - 860px) / 2));position:relative;
-  zoom:var(--ui-zoom,1);
   background:var(--bg-deep);scrollbar-gutter:stable;
 }
 .date{

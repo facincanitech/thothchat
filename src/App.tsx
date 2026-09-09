@@ -114,7 +114,7 @@ function App() {
     applyVar('--card-custom', profile?.app_card_color, '--on-card')
     applyVar('--in-custom', profile?.app_incoming_color, '--on-in')
     applyVar('--out-custom', profile?.app_outgoing_color, '--on-out')
-    const zoom = profile?.app_text_size === 'small' ? '0.75' : profile?.app_text_size === 'large' ? '1.5' : null
+    const zoom = profile?.app_text_size === 'small' ? '0.85' : profile?.app_text_size === 'large' ? '1.15' : null
     applyVar('--ui-zoom', zoom)
   }, [
     profile?.app_bg_color,

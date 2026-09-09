@@ -1,0 +1,19 @@
+name: Supabase heartbeat
+
+# Projetos gratuitos do Supabase pausam depois de ~7 dias sem atividade.
+# Esse job faz uma leitura leve no banco a cada 6 dias so pra manter o projeto ativo.
+on:
+  schedule:
+    - cron: '0 3 */6 * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST
+        run: |
+          curl -sf -o /dev/null \
+            "https://eeyypnkbiejvficybhxu.supabase.co/rest/v1/profiles?select=id&limit=1" \
+            -H "apikey: sb_publishable__dtVChf4HhsbSjY43nauBw_VjNtdLlA" \
+            -H "Authorization: Bearer sb_publishable__dtVChf4HhsbSjY43nauBw_VjNtdLlA"

@@ -398,26 +398,6 @@ export function ChatList({
   const bannerInputRef = useRef<HTMLInputElement>(null)
   const bannerPreviewRef = useRef<HTMLDivElement>(null)
   const bannerDragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null)
-  const [autoTranscribe, setAutoTranscribe] = useState(() => {
-    try {
-      return localStorage.getItem('flux-auto-transcribe') !== '0'
-    } catch {
-      return true
-    }
-  })
-
-  function toggleAutoTranscribe() {
-    setAutoTranscribe((prev) => {
-      const next = !prev
-      try {
-        localStorage.setItem('flux-auto-transcribe', next ? '1' : '0')
-      } catch {
-        // ignore
-      }
-      return next
-    })
-  }
-
   async function loadConversations() {
     if (!me) return
     const { data: memberRows } = await supabase
@@ -1401,8 +1381,10 @@ export function ChatList({
       return !c.isArchived
     })
     .sort((a, b) => {
-      if (activeFilter !== 'favorites') return 0
-      return (a.favoritedAt || '').localeCompare(b.favoritedAt || '')
+      if (activeFilter === 'favorites') return (a.favoritedAt || '').localeCompare(b.favoritedAt || '')
+      if (a.isFavorite !== b.isFavorite) return a.isFavorite ? -1 : 1
+      if (a.isFavorite) return a.label.localeCompare(b.label, 'pt-BR')
+      return 0
     })
 
   const panelTitle =
@@ -2037,30 +2019,8 @@ export function ChatList({
                 Maior
               </button>
             </div>
-          </div>
-        )}
 
-        {accountView === 'account' && me && (
-          <div className="new-conv-form">
-            <label>Email</label>
-            <input value={me.email} disabled />
-            <span className="invite-code">notificações de segurança e mais dados da conta chegam em breve</span>
-
-            <label style={{ marginTop: 10 }}>App</label>
-            <button
-              type="button"
-              className="google-btn"
-              disabled={appUpdating}
-              style={{ display: 'block', width: '100%', textAlign: 'center' }}
-              onClick={handleAppUpdateClick}
-            >
-              {appUpdating ? 'Baixando...' : `Baixar o app (Android) — v${latestVersion}`}
-            </button>
-            <span className="invite-code">
-              {latestVersion !== APP_VERSION ? `sua versão instalada: v${APP_VERSION}` : 'você já está na versão mais nova'}
-            </span>
-
-            <label style={{ marginTop: 10 }}>Tema</label>
+            <label style={{ marginTop: 14 }}>Tema</label>
             <div className="theme-picker">
               <button
                 type="button"
@@ -2084,17 +2044,39 @@ export function ChatList({
                 Alto contraste
               </button>
             </div>
+          </div>
+        )}
 
-            <label style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input
-                type="checkbox"
-                checked={autoTranscribe}
-                onChange={toggleAutoTranscribe}
-                style={{ width: 'auto' }}
-              />
-              Transcrição automática dos áudios que eu gravar
-            </label>
-            <span className="invite-code">com isso ligado, ao gravar um áudio o texto falado fica disponível pra quem recebe, tocando em "Transcrever"</span>
+        {accountView === 'account' && me && (
+          <div className="new-conv-form">
+            <label>Email</label>
+            <input value={me.email} disabled />
+            <span className="invite-code">notificações de segurança e mais dados da conta chegam em breve</span>
+
+            <label style={{ marginTop: 10 }}>App</label>
+            <button
+              type="button"
+              className="google-btn"
+              disabled={appUpdating}
+              style={{ display: 'block', width: '100%', textAlign: 'center' }}
+              onClick={handleAppUpdateClick}
+            >
+              {appUpdating ? 'Baixando...' : `Baixar o app (Android) — v${latestVersion}`}
+            </button>
+            <span className="invite-code">
+              {latestVersion !== APP_VERSION ? `sua versão instalada: v${APP_VERSION}` : 'você já está na versão mais nova'}
+            </span>
+
+            <label style={{ marginTop: 10 }}>Sobre o app</label>
+            <a
+              href="https://github.com/facincanitech/thothchat/releases/latest"
+              target="_blank"
+              rel="noreferrer"
+              className="google-btn"
+              style={{ display: 'block', width: '100%', textAlign: 'center', textDecoration: 'none' }}
+            >
+              Ver notas da versão (release)
+            </a>
 
             <div style={{ marginTop: 24, borderTop: '1px solid var(--line-2)', paddingTop: 16 }}>
               {confirmSignOut ? (
