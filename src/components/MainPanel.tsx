@@ -32,7 +32,7 @@ import { ProfilePopup } from './ProfilePopup'
 import type { Bot, Community, Conversation, Message, Profile, SonorSession } from '../types'
 import { generateInviteCode, inviteUrl } from '../lib/inviteLink'
 import { parseCommand, rollDice, pickRandom } from '../lib/bots'
-import { fetchRandomStation, searchPublicStations, isHlsStream } from '../lib/sonor'
+import { fetchRandomStation, searchPublicStations, isHlsStream, fetchNowPlaying, shortRadioName } from '../lib/sonor'
 
 const EMOJIS = [
   '😀', '😁', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😍',
@@ -355,6 +355,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     }
   })
   const [sonorAudioError, setSonorAudioError] = useState<string | null>(null)
+  const [sonorNowPlaying, setSonorNowPlaying] = useState<string | null>(null)
   const sonorAudioRef = useRef<HTMLAudioElement>(null)
   const sonorHlsRef = useRef<any>(null)
   const sonorRetryCountRef = useRef(0)
@@ -764,6 +765,24 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       // ignore
     }
   }
+
+  useEffect(() => {
+    setSonorNowPlaying(null)
+    if (!sonorSession) return
+    let cancelled = false
+
+    async function poll() {
+      const title = await fetchNowPlaying(sonorSession!.stream_url)
+      if (!cancelled) setSonorNowPlaying(title)
+    }
+
+    poll()
+    const interval = setInterval(poll, 25000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [sonorSession?.stream_url])
 
   useEffect(() => {
     if (atBottom) bottomRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' })
@@ -1921,7 +1940,10 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           </div>
           {sonorSession && (
             <div className="header-sonor">
-              <span>{sonorAudioError || `tocando: ${sonorSession.title}`}</span>
+              <span title={sonorSession.title}>
+                {sonorAudioError || shortRadioName(sonorSession.title)}
+                {!sonorAudioError && sonorNowPlaying ? ` · ${sonorNowPlaying}` : ''}
+              </span>
               <input
                 type="range"
                 className="header-sonor-volume"

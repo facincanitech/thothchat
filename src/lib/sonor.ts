@@ -48,3 +48,29 @@ export async function searchPublicStations(query: string): Promise<RadioStation[
 export function isHlsStream(url: string): boolean {
   return url.toLowerCase().includes('.m3u8')
 }
+
+const SONOR_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0ZHlkbWZ4cXhzdWpycWR0cmtuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwMjI4MjMsImV4cCI6MjEwMjU5ODgyM30.16DYgh8unDuQXsxyj071uq2gKWeH-47QQ-Nq8UY0hdw'
+
+export async function fetchNowPlaying(streamUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://xtdydmfxqxsujrqdtrkn.supabase.co/functions/v1/radio-nowplaying?url=${encodeURIComponent(streamUrl)}`,
+      { headers: { Authorization: `Bearer ${SONOR_ANON_KEY}` } },
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.title || null
+  } catch {
+    return null
+  }
+}
+
+export function shortRadioName(name: string): string {
+  const stopIdx = name.search(/[¡!\-|:·,]/)
+  let base = stopIdx > 1 ? name.slice(0, stopIdx).trim() : name.trim()
+  const words = base.split(/\s+/)
+  if (words.length > 2) base = words.slice(0, 2).join(' ')
+  if (base.length > 14) base = `${base.slice(0, 14).trim()}…`
+  return base || name.slice(0, 14)
+}
