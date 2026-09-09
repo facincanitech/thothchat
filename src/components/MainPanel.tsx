@@ -24,7 +24,7 @@ import {
   type EphemeralMediaView,
   type EphemeralOpenResult,
 } from '../lib/ephemeralMedia'
-import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconChevronDown, IconCrown, IconDownload, IconHeart, IconLock, IconLockOpen, IconMic, IconMinusCircle, IconNudge, IconPhone, IconPlus, IconSend, IconSmile, IconUser, IconVideo, IconVolume, IconVolumeOff } from './icons'
+import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconChevronDown, IconCrown, IconDownload, IconHeart, IconLock, IconLockOpen, IconMic, IconMinusCircle, IconNudge, IconPanelLeft, IconPhone, IconPlus, IconSend, IconSmile, IconUser, IconVideo, IconVolume, IconVolumeOff } from './icons'
 import type { CallKind, CallPeer } from '../lib/call'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { StyledName } from './StyledName'
@@ -132,9 +132,11 @@ type Props = {
   onOpenCommunity: (c: Community) => void
   onStartCall: (peer: CallPeer, kind: CallKind) => void
   inviteDemoSignal?: number
+  sidebarCollapsed?: boolean
+  onToggleSidebar?: () => void
 }
 
-export function MainPanel({ me, conversation, onBack, onConversationUpdate, blockedIds, onOpenCommunity, onStartCall, inviteDemoSignal }: Props) {
+export function MainPanel({ me, conversation, onBack, onConversationUpdate, blockedIds, onOpenCommunity, onStartCall, inviteDemoSignal, sidebarCollapsed, onToggleSidebar }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [members, setMembers] = useState<Record<string, MemberMeta>>({})
   const [draft, setDraft] = useState('')
@@ -1142,19 +1144,19 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
     try {
       if (parsed.command === '/dado') {
-        const bot = findInstalledBot('dado')
+        const bot = findInstalledBot('zelador')
         if (!bot) return
         const sides = parseInt(parsed.args[0], 10) || 6
         await postBotReply(bot.id, `🎲 rolou ${rollDice(sides)} (d${sides})`)
       } else if (parsed.command === '/sorteio') {
-        const bot = findInstalledBot('dado')
+        const bot = findInstalledBot('zelador')
         if (!bot) return
         const candidates = Object.entries(members).filter(([id]) => !botsById[id])
         const picked = pickRandom(candidates)
         if (!picked) return
         await postBotReply(bot.id, `🎉 sorteado: ${displayName(picked[1])}`)
       } else if (parsed.command === '/kick') {
-        const bot = findInstalledBot('admin')
+        const bot = findInstalledBot('zelador')
         if (!bot) return
         const targetHandle = parsed.args[0]?.replace(/^@/, '')
         const targetEntry = Object.entries(members).find(([, m]) => m.username === targetHandle)
@@ -1269,7 +1271,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
       await postSystemMessage(`${displayName(me)} adicionou ${target.username} ao chat`)
 
-      const welcomeBot = findInstalledBot('boasvindas')
+      const welcomeBot = findInstalledBot('zelador')
       if (welcomeBot) {
         await postBotReply(welcomeBot.id, `Bem-vindo(a), ${target.display_name || target.username}!`)
       }
@@ -1896,6 +1898,16 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           )}
         </div>
         <div className="header-actions">
+          {conversation.type === 'group' && onToggleSidebar && (
+            <button
+              type="button"
+              className="icon-btn"
+              title={sidebarCollapsed ? 'Mostrar lista de conversas' : 'Esconder lista de conversas'}
+              onClick={onToggleSidebar}
+            >
+              <IconPanelLeft size={20} />
+            </button>
+          )}
           {conversation.type === 'dm' && otherMember && otherMemberEntry && (
             <>
               <button

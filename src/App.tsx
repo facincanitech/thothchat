@@ -146,6 +146,7 @@ function App() {
   }
   const [groupsOpen, setGroupsOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
@@ -506,9 +507,10 @@ function App() {
   }
 
   const anyPanelOpen = panelOpen || accountOpen || groupsOpen || statusOpen
+  const isGroupContext = selected?.type === 'group' || !!selectedCommunity
 
   return (
-    <div className={`app${selected || selectedCommunity ? ' chat-open' : ''}${anyPanelOpen ? ' panel-open' : ''}`}>
+    <div className={`app${selected || selectedCommunity ? ' chat-open' : ''}${anyPanelOpen ? ' panel-open' : ''}${sidebarCollapsed && isGroupContext ? ' sidebar-collapsed' : ''}`}>
       <Rail
         me={profile}
         onRequireAuth={() => requireAuth(() => {})}
@@ -563,6 +565,8 @@ function App() {
             setSelectedCommunity(null)
             if (groupsRestoreView) setGroupsOpen(true)
           }}
+          sidebarCollapsed={sidebarCollapsed}
+          onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
         />
       ) : (
         <MainPanel
@@ -577,6 +581,8 @@ function App() {
           onConversationUpdate={(patch) => setSelected((c) => (c ? { ...c, ...patch } : c))}
           onOpenCommunity={(c) => { setSelected(null); setCommunityTab('home'); setSelectedCommunity(c) }}
           onStartCall={(peer, kind) => selected && callOverlayRef.current?.startCall({ peer, kind, conversationId: selected.id })}
+          sidebarCollapsed={sidebarCollapsed}
+          onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
         />
       )}
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}

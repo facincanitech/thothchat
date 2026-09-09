@@ -447,3 +447,12 @@ export function IconStatus({ size = 20 }: IconProps) {
     </svg>
   )
 }
+
+export function IconPanelLeft({ size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <line x1="9" y1="4" x2="9" y2="20" />
+    </svg>
+  )
+}

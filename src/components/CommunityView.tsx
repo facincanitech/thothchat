@@ -6,7 +6,7 @@ import { uploadImage } from '../lib/uploadImage'
 import { getErrorMessage } from '../lib/errors'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { AvatarBox } from './AvatarBox'
-import { IconArrowLeft, IconEdit, IconSend, IconSmile, IconTrash, IconUser } from './icons'
+import { IconArrowLeft, IconEdit, IconPanelLeft, IconSend, IconSmile, IconTrash, IconUser } from './icons'
 import type { Community, Profile } from '../types'
 import { generateInviteCode, inviteUrl } from '../lib/inviteLink'
 
@@ -57,6 +57,8 @@ type Props = {
   onCommunityUpdate: (patch: Partial<Community>) => void
   onDeleted: () => void
   onBack: () => void
+  sidebarCollapsed?: boolean
+  onToggleSidebar?: () => void
 }
 
 function recordEvent(bufferRef: React.MutableRefObject<ReplayEvent[]>, text: string) {
@@ -65,7 +67,7 @@ function recordEvent(bufferRef: React.MutableRefObject<ReplayEvent[]>, text: str
   bufferRef.current = bufferRef.current.filter((e) => now - e.t <= REPLAY_WINDOW_MS)
 }
 
-export function CommunityView({ me, community, activeTab, onTabChange, onCommunityUpdate, onDeleted, onBack }: Props) {
+export function CommunityView({ me, community, activeTab, onTabChange, onCommunityUpdate, onDeleted, onBack, sidebarCollapsed, onToggleSidebar }: Props) {
   const [posts, setPosts] = useState<Post[]>([])
   const [comments, setComments] = useState<Comment[]>([])
   const [reactions, setReactions] = useState<Reaction[]>([])
@@ -438,6 +440,16 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
           </div>
         </div>
         <div className="header-actions">
+          {onToggleSidebar && (
+            <button
+              type="button"
+              className="icon-btn"
+              title={sidebarCollapsed ? 'Mostrar lista de conversas' : 'Esconder lista de conversas'}
+              onClick={onToggleSidebar}
+            >
+              <IconPanelLeft size={20} />
+            </button>
+          )}
           <button type="button" className="header-action-btn" onClick={isMember ? leaveCommunity : joinCommunity}>
             {isMember ? 'Sair' : 'Participar'}
           </button>
