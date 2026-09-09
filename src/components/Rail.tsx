@@ -76,9 +76,9 @@ export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onOp
       <div className="rail-item">
         <button type="button" className="rail-link" onClick={onGoHome}
           aria-current={activeSection === 'chats' ? 'page' : undefined}
-          title={nudgeCount > 0 ? 'Alguém chamou sua atenção' : 'Conversas'}>
+          title={nudgeCount > 0 ? 'Alguém chamou sua atenção' : 'Chats'}>
           <span className="rail-symbol"><IconChat size={22} /></span>
-          <span className="rail-label">Conversas</span>
+          <span className="rail-label">Chats</span>
         </button>
         {nudgeCount > 0 && (
           <span className="rail-badge" style={{ background: 'var(--green)' }}>
@@ -90,7 +90,7 @@ export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onOp
         <button type="button" className="rail-link" title="Nova conversa" onClick={onNewConversation}
           aria-current={activeSection === 'new' ? 'page' : undefined}>
           <span className="rail-symbol"><IconPlus /></span>
-          <span className="rail-label">Nova</span>
+          <span className="rail-label">Novo</span>
         </button>
         {pendingCount > 0 && (
           <span className="rail-badge" title={`${pendingCount} solicitação(ões) de amizade`}>
