@@ -346,6 +346,14 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [botsError, setBotsError] = useState<string | null>(null)
   const [sonorSession, setSonorSession] = useState<SonorSession | null>(null)
   const [sonorListening, setSonorListening] = useState(true)
+  const [sonorVolume, setSonorVolume] = useState(() => {
+    try {
+      const saved = parseFloat(localStorage.getItem('ferus-sonor-volume') || '')
+      return Number.isFinite(saved) ? Math.min(1, Math.max(0, saved)) : 1
+    } catch {
+      return 1
+    }
+  })
   const [sonorAudioError, setSonorAudioError] = useState<string | null>(null)
   const sonorAudioRef = useRef<HTMLAudioElement>(null)
   const sonorHlsRef = useRef<any>(null)
@@ -742,6 +750,20 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     if (sonorSession && sonorListening) audio.play().catch(() => {})
     else audio.pause()
   }, [sonorListening, sonorSession])
+
+  useEffect(() => {
+    const audio = sonorAudioRef.current
+    if (audio) audio.volume = sonorVolume
+  }, [sonorVolume, sonorSession?.stream_url])
+
+  function handleSonorVolumeChange(value: number) {
+    setSonorVolume(value)
+    try {
+      localStorage.setItem('ferus-sonor-volume', String(value))
+    } catch {
+      // ignore
+    }
+  }
 
   useEffect(() => {
     if (atBottom) bottomRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' })
@@ -1900,6 +1922,17 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           {sonorSession && (
             <div className="header-sonor">
               <span>{sonorAudioError || `tocando: ${sonorSession.title}`}</span>
+              <input
+                type="range"
+                className="header-sonor-volume"
+                min={0}
+                max={1}
+                step={0.05}
+                value={sonorVolume}
+                title="Volume do Sonor"
+                onChange={(e) => handleSonorVolumeChange(parseFloat(e.target.value))}
+                onClick={(e) => e.stopPropagation()}
+              />
               <button type="button" className="icon-btn" title={sonorListening ? 'Silenciar Sonor' : 'Ouvir Sonor'} onClick={toggleSonorListening}>
                 {sonorListening ? <IconVolume size={16} /> : <IconVolumeOff size={16} />}
               </button>
