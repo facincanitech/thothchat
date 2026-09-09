@@ -190,6 +190,9 @@ type Props = {
   onCommunityBack: () => void
   theme: 'dark' | 'light' | 'contrast'
   onThemeChange: (theme: 'dark' | 'light' | 'contrast') => void
+  onOpenStatus: () => void
+  onOpenGroupsTip: () => void
+  onRequestInviteDemo: (c: Conversation) => void
 }
 
 type ConvWithLabel = Conversation & {
@@ -248,6 +251,9 @@ export function ChatList({
   onCommunityBack,
   theme,
   onThemeChange,
+  onOpenStatus,
+  onOpenGroupsTip,
+  onRequestInviteDemo,
 }: Props) {
   const [conversations, setConversations] = useState<ConvWithLabel[]>(() => {
     const lastUserId = (() => {
@@ -425,6 +431,16 @@ export function ChatList({
   const [contextMenu, setContextMenu] = useState<{ conv: ConvWithLabel; x: number; y: number } | null>(null)
 
   const [accountView, setAccountView] = useState<AccountView>('root')
+  const pendingAccountViewRef = useRef<AccountView | null>(null)
+
+  useEffect(() => {
+    if (accountView !== 'appearance') return
+    try {
+      localStorage.setItem('ferus-visited-appearance', '1')
+    } catch {
+      // ignore
+    }
+  }, [accountView])
   const [latestVersion, setLatestVersion] = useState<string>(APP_VERSION)
   const [appUpdating, setAppUpdating] = useState(false)
 
@@ -1018,7 +1034,8 @@ export function ChatList({
       setBannerColorDraft(me.banner_color || null)
       setBannerImageDraft(me.banner_image_url || null)
       setBannerImagePosDraft(me.banner_image_position || '50% 50%')
-      setAccountView('root')
+      setAccountView(pendingAccountViewRef.current || 'root')
+      pendingAccountViewRef.current = null
       setAccountError(null)
       setConfirmSignOut(false)
     }
@@ -1504,7 +1521,19 @@ export function ChatList({
               <div className="brand-caption">Conversa de verdade, ao vivo.</div>
             </div>
             <div style={{ marginLeft: 'auto' }}>
-              <NotificationCenter />
+              <NotificationCenter
+                onOpenAppearance={() => {
+                  pendingAccountViewRef.current = 'appearance'
+                  onAccountOpenChange(true)
+                }}
+                onOpenStatus={onOpenStatus}
+                onOpenCommunityTip={onOpenGroupsTip}
+                onOpenChatInviteDemo={() => {
+                  const target = conversations.find((c) => !c.isArchived) || conversations[0]
+                  if (target) onRequestInviteDemo(target)
+                }}
+                hasFirstChat={conversations.length > 0}
+              />
             </div>
           </div>
 

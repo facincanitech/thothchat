@@ -463,6 +463,11 @@ function App() {
       setPanelOpen(false)
       setAccountOpen(false)
       setGroupsOpen(true)
+      try {
+        localStorage.setItem('ferus-visited-groups', '1')
+      } catch {
+        // ignore
+      }
     })
   }
 
@@ -482,6 +487,23 @@ function App() {
     setAccountOpen(false)
     setGroupsOpen(false)
     setStatusOpen(true)
+    try {
+      localStorage.setItem('ferus-visited-status', '1')
+    } catch {
+      // ignore
+    }
+  }
+
+  const [inviteDemoSignal, setInviteDemoSignal] = useState(0)
+
+  function openChatInviteDemo(conversation: Conversation) {
+    setStatusOpen(false)
+    setSelectedCommunity(null)
+    setPanelOpen(false)
+    setAccountOpen(false)
+    setGroupsOpen(false)
+    setSelected(conversation)
+    setInviteDemoSignal((k) => k + 1)
   }
 
   const anyPanelOpen = panelOpen || accountOpen || groupsOpen
@@ -524,6 +546,9 @@ function App() {
         groupsRestoreView={groupsRestoreView}
         onConsumeGroupsRestore={() => setGroupsRestoreView(null)}
         onLeaveGroupsPanel={leaveGroupsPanel}
+        onOpenStatus={openStatus}
+        onOpenGroupsTip={openGroups}
+        onRequestInviteDemo={openChatInviteDemo}
         onProfileChange={(patch) => setProfile((p) => (p ? { ...p, ...patch } : p))}
         theme={theme}
         onThemeChange={setTheme}
@@ -547,6 +572,7 @@ function App() {
           me={profile}
           conversation={selected}
           blockedIds={blockedIds}
+          inviteDemoSignal={inviteDemoSignal}
           onBack={() => {
             setSelected(null)
             if (groupsRestoreView) setGroupsOpen(true)

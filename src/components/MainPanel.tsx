@@ -129,9 +129,10 @@ type Props = {
   blockedIds: Set<string>
   onOpenCommunity: (c: Community) => void
   onStartCall: (peer: CallPeer, kind: CallKind) => void
+  inviteDemoSignal?: number
 }
 
-export function MainPanel({ me, conversation, onBack, onConversationUpdate, blockedIds, onOpenCommunity, onStartCall }: Props) {
+export function MainPanel({ me, conversation, onBack, onConversationUpdate, blockedIds, onOpenCommunity, onStartCall, inviteDemoSignal }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [members, setMembers] = useState<Record<string, MemberMeta>>({})
   const [draft, setDraft] = useState('')
@@ -306,6 +307,26 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [replayEvents, setReplayEvents] = useState<ReplayEvent[] | null>(null)
   const [showChatConfig, setShowChatConfig] = useState(false)
   const [configView, setConfigView] = useState<'root' | 'invite' | 'edit' | 'view' | 'members'>('root')
+  const prevInviteDemoSignalRef = useRef(inviteDemoSignal)
+
+  useEffect(() => {
+    if (!showChatConfig) return
+    try {
+      localStorage.setItem('ferus-visited-chat-config', '1')
+    } catch {
+      // ignore
+    }
+  }, [showChatConfig])
+
+  useEffect(() => {
+    if (inviteDemoSignal === undefined || inviteDemoSignal === prevInviteDemoSignalRef.current) return
+    prevInviteDemoSignalRef.current = inviteDemoSignal
+    if (!conversation) return
+    setShowChatConfig(true)
+    setConfigView('invite')
+    loadInviteFriends()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inviteDemoSignal, conversation])
   const [editName, setEditName] = useState('')
   const [editDesc, setEditDesc] = useState('')
   const [editImageUrl, setEditImageUrl] = useState('')
