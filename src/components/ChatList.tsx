@@ -1465,7 +1465,7 @@ export function ChatList({
     .filter((c) => {
       if (activeFilter === 'archived') return c.isArchived
       if (activeFilter === 'favorites') return c.isFavorite
-      if (activeFilter === 'group') return c.type === 'group'
+      if (activeFilter === 'group') return c.type === 'group' && !c.isOrganicGroup
       return !c.isArchived
     })
     .sort((a, b) => {

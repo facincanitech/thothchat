@@ -1934,7 +1934,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             ) : (
               displayTitle
             )}
-            {isOrganicGroup && <span className="grupal-badge">Grupo</span>}
+            {isOrganicGroup && <span className="grupal-badge">Grupo Orgânico</span>}
             {nudgeFrom && (
               <span className="nudge-indicator" title="chamou sua atenção">
                 <IconBell size={14} />
@@ -1996,7 +1996,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               </button>
             </>
           )}
-          {conversation.type === 'dm' && (
+          {(conversation.type === 'dm' || isOrganicGroup) && (
             <button
               type="button"
               className="nudge-btn"
@@ -2177,6 +2177,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                     </div>
                   ))}
                 </div>
+                <button type="button" onClick={() => setConfigView('root')} style={{ marginTop: 10 }}>voltar</button>
               </>
             )}
             {configView === 'bots' && (
