@@ -477,6 +477,7 @@ function App() {
         onOpenGroups={openGroups}
         onGoHome={openNudger}
         nudgeCount={nudgers.length}
+        activeSection={accountOpen ? 'account' : panelOpen ? 'new' : groupsOpen || selectedCommunity ? 'groups' : 'chats'}
       />
       <ChatList
         me={profile}

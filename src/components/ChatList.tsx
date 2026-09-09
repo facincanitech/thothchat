@@ -1431,20 +1431,23 @@ export function ChatList({
             className={`community-sidebar-nav${communityTab === 'info' ? ' active' : ''}`}
             onClick={() => onCommunityTabChange('info')}
           >
-            comunidade
+            Sobre a comunidade
           </button>
           <button
             type="button"
             className={`community-sidebar-nav${communityTab === 'home' ? ' active' : ''}`}
             onClick={() => onCommunityTabChange('home')}
           >
-            início
+            Tópicos
           </button>
         </div>
       ) : (
         <>
           <div className="top">
-            <div className="brand">ThothChat</div>
+            <div className="brand-lockup">
+              <div className="brand">ThothChat</div>
+              <div className="brand-caption">Conversa de verdade, ao vivo.</div>
+            </div>
             <div style={{ marginLeft: 'auto' }}>
               <NotificationCenter />
             </div>
@@ -1454,6 +1457,7 @@ export function ChatList({
             <div className="search">
               <span><IconSearch size={18} /></span>
               <input
+                aria-label="Pesquisar conversas"
                 placeholder="Pesquisar conversas"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -1477,7 +1481,7 @@ export function ChatList({
                 >
                   <IconGrip size={12} />
                 </span>
-                <button className="filter" onClick={() => setActiveFilter(key)}>
+                <button className="filter" aria-pressed={activeFilter === key} onClick={() => setActiveFilter(key)}>
                   {FILTER_LABELS[key]}
                 </button>
               </div>

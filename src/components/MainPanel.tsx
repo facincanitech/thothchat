@@ -10,6 +10,7 @@ import { getPresenceColor } from '../lib/presence'
 import { getErrorMessage } from '../lib/errors'
 import { displayName } from '../lib/displayName'
 import { colorFromId } from '../lib/avatarColor'
+import thothLogo from '../../logo/toth_chat.png'
 import { sanitizeImageUrl } from '../lib/imageUrl'
 import { uploadImage } from '../lib/uploadImage'
 import { readCache, writeCache } from '../lib/cache'
@@ -1438,12 +1439,18 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
   if (!conversation || !me) {
     return (
-      <main className="main">
+      <main className="main main-welcome">
         <div className="empty">
-          <div className="empty-card">
-            <div style={{ color: '#71818a' }}><IconChat size={46} /></div>
-            <h2>Nenhuma conversa selecionada</h2>
-            <p>Escolha uma conversa ou comece uma nova pra ver o mecanismo ao vivo em ação.</p>
+          <div className="empty-card welcome-card">
+            <div className="welcome-emblem"><img src={thothLogo} alt="" /></div>
+            <span className="welcome-eyebrow">THOTHCHAT</span>
+            <h2>Toda conversa tem vida.</h2>
+            <p>{me ? 'Escolha alguém ao lado. Aqui, até o caminho das palavras faz parte da conversa.' : 'Entre na sua conta. Aqui, até o caminho das palavras faz parte da conversa.'}</p>
+            <div className="welcome-features">
+              <span><IconNudge size={17} /> Sininho</span>
+              <span><IconChat size={17} /> Escrita ao vivo</span>
+              <span><IconHeart size={17} /> Winks</span>
+            </div>
           </div>
         </div>
       </main>
@@ -1453,7 +1460,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   return (
     <main className="main">
       <header className="chat-header">
-        <button type="button" className="back-mobile icon-btn" onClick={onBack}><IconArrowLeft size={20} /></button>
+        <button type="button" className="back-mobile icon-btn" aria-label="Voltar às conversas" onClick={onBack}><IconArrowLeft size={20} /></button>
         <div
           style={{ position: 'relative', cursor: otherMember || isRoleGroup ? 'pointer' : 'default' }}
           onClick={() => {
@@ -2333,4 +2340,3 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     </main>
   )
 }
-

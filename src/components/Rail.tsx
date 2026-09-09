@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { displayName } from '../lib/displayName'
 import { IconBell, IconChat, IconGroup, IconPlus, IconStar, IconUser } from './icons'
 import type { Profile } from '../types'
+import thothLogo from '../../logo/toth_chat.png'
 
 type Props = {
   me: Profile | null
@@ -12,9 +13,10 @@ type Props = {
   onOpenGroups: () => void
   onGoHome: () => void
   nudgeCount: number
+  activeSection: 'chats' | 'new' | 'groups' | 'account'
 }
 
-export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onOpenGroups, onGoHome, nudgeCount }: Props) {
+export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onOpenGroups, onGoHome, nudgeCount, activeSection }: Props) {
   const [pendingCount, setPendingCount] = useState(0)
 
   useEffect(() => {
@@ -66,34 +68,54 @@ export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onOp
   }
 
   return (
-    <aside className="rail">
-      <div style={{ position: 'relative' }}>
-        <div className="logo" onClick={onGoHome} style={{ cursor: 'pointer' }} title={nudgeCount > 0 ? 'Alguém chamou sua atenção' : 'Início'}>
-          <IconChat size={22} />
-        </div>
+    <aside className="rail" aria-label="Navegação principal">
+      <div className="rail-brand" aria-label="ThothChat">
+        <img className="brand-image" src={thothLogo} alt="" />
+        <span className="rail-wordmark">thoth</span>
+      </div>
+      <div className="rail-item">
+        <button type="button" className="rail-link" onClick={onGoHome}
+          aria-current={activeSection === 'chats' ? 'page' : undefined}
+          title={nudgeCount > 0 ? 'Alguém chamou sua atenção' : 'Conversas'}>
+          <span className="rail-symbol"><IconChat size={22} /></span>
+          <span className="rail-label">Conversas</span>
+        </button>
         {nudgeCount > 0 && (
           <span className="rail-badge" style={{ background: 'var(--green)' }}>
             <IconBell size={11} />
           </span>
         )}
       </div>
-      <div style={{ position: 'relative' }}>
-        <button title="Nova conversa" onClick={onNewConversation}><IconPlus /></button>
+      <div className="rail-item">
+        <button type="button" className="rail-link" title="Nova conversa" onClick={onNewConversation}
+          aria-current={activeSection === 'new' ? 'page' : undefined}>
+          <span className="rail-symbol"><IconPlus /></span>
+          <span className="rail-label">Nova</span>
+        </button>
         {pendingCount > 0 && (
           <span className="rail-badge" title={`${pendingCount} solicitação(ões) de amizade`}>
             <IconStar size={11} />
           </span>
         )}
       </div>
-      <button title="Grupos e comunidades" onClick={handleGroupsClick}><IconGroup /></button>
+      <button type="button" className="rail-item rail-link" title="Grupos e comunidades" onClick={handleGroupsClick}
+        aria-current={activeSection === 'groups' ? 'page' : undefined}>
+        <span className="rail-symbol"><IconGroup /></span>
+        <span className="rail-label">Grupos</span>
+      </button>
       <div className="spacer" />
-      <div
-        className="avatar-sm"
+      <button
+        type="button"
+        className="rail-item rail-link rail-account"
         onClick={handleAvatarClick}
+        aria-current={activeSection === 'account' ? 'page' : undefined}
         title={me ? `${displayName(me)} — conta` : 'Entrar'}
       >
-        <IconUser size={18} />
-      </div>
+        <span className="avatar-sm">
+          {me?.avatar_url ? <img src={me.avatar_url} alt="" /> : <IconUser size={18} />}
+        </span>
+        <span className="rail-label">{me ? 'Perfil' : 'Entrar'}</span>
+      </button>
     </aside>
   )
 }

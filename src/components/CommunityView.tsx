@@ -421,7 +421,7 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
   return (
     <main className="main">
       <header className="chat-header">
-        <button type="button" className="back-mobile icon-btn" onClick={onBack}><IconArrowLeft size={20} /></button>
+        <button type="button" className="back-mobile icon-btn" aria-label="Voltar às comunidades" onClick={onBack}><IconArrowLeft size={20} /></button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 13, cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => onTabChange(activeTab === 'info' ? 'home' : 'info')}>
           <AvatarBox
             src={community.image_url}
@@ -443,6 +443,11 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
           </button>
         </div>
       </header>
+
+      <nav className="community-tabs" aria-label="Seções da comunidade">
+        <button type="button" aria-pressed={activeTab === 'home'} onClick={() => onTabChange('home')}>Tópicos</button>
+        <button type="button" aria-pressed={activeTab === 'info'} onClick={() => onTabChange('info')}>Sobre a comunidade</button>
+      </nav>
 
       {activeTab === 'home' && (
       <section className="messages community-feed">
