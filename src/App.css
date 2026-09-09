@@ -81,6 +81,7 @@ body{
   -webkit-font-smoothing:antialiased;
   background:var(--bg-deep);
   color:var(--text);
+  transition:background-color .2s ease,color .2s ease;
 }
 .app{height:100vh;height:100dvh;display:flex;min-width:0;min-height:0;max-width:100vw;overflow:hidden}
 
@@ -193,7 +194,7 @@ body{
 .chat-list .empty-cta button{display:inline-flex;align-items:center;gap:6px}
 
 /* main chat */
-.main{flex:1;display:flex;flex-direction:column;background:var(--bg-deep);min-width:0;min-height:0;zoom:var(--ui-zoom,1)}
+.main{flex:1;display:flex;flex-direction:column;background:var(--bg-deep);min-width:0;min-height:0;zoom:var(--ui-zoom,1);transition:background-color .2s ease,color .2s ease}
 .chat-header{
   min-height:84px;background:var(--rail-bg,var(--bg-surface));color:var(--rail-icon,inherit);border-bottom:1px solid var(--line);
   display:flex;align-items:center;padding:14px 28px;gap:13px;flex-shrink:0;
@@ -235,6 +236,7 @@ body{
 .messages{
   flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:30px max(28px,calc((100% - 860px) / 2));position:relative;
   background:var(--bg-deep);scrollbar-gutter:stable;
+  transition:background-color .2s ease,color .2s ease;
 }
 .date{
   position:relative;width:max-content;margin:0 auto 18px;
