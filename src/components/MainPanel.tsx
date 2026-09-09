@@ -24,7 +24,7 @@ import {
   type EphemeralMediaView,
   type EphemeralOpenResult,
 } from '../lib/ephemeralMedia'
-import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconChevronDown, IconCrown, IconDownload, IconHeart, IconLock, IconLockOpen, IconMic, IconMinusCircle, IconNudge, IconPanelLeft, IconPhone, IconPlus, IconSend, IconSmile, IconUser, IconVideo, IconVolume, IconVolumeOff } from './icons'
+import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconChevronDown, IconCrown, IconDownload, IconEdit, IconHeart, IconLock, IconLockOpen, IconMic, IconMinusCircle, IconNudge, IconPanelLeft, IconPhone, IconPlus, IconSend, IconSmile, IconUser, IconVideo, IconVolume, IconVolumeOff } from './icons'
 import type { CallKind, CallPeer } from '../lib/call'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { StyledName } from './StyledName'
@@ -310,7 +310,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [replayFor, setReplayFor] = useState<Message | null>(null)
   const [replayEvents, setReplayEvents] = useState<ReplayEvent[] | null>(null)
   const [showChatConfig, setShowChatConfig] = useState(false)
-  const [configView, setConfigView] = useState<'root' | 'invite' | 'edit' | 'view' | 'members' | 'bots'>('root')
+  const [configView, setConfigView] = useState<'root' | 'invite' | 'members' | 'bots'>('root')
   const prevInviteDemoSignalRef = useRef(inviteDemoSignal)
 
   useEffect(() => {
@@ -334,12 +334,12 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [editName, setEditName] = useState('')
   const [editDesc, setEditDesc] = useState('')
   const [editImageUrl, setEditImageUrl] = useState('')
+  const [editingGroupName, setEditingGroupName] = useState(false)
   const [editInvitePermission, setEditInvitePermission] = useState<'all' | 'owner'>('all')
   const [groupImageUploading, setGroupImageUploading] = useState(false)
   const [groupImageFailed, setGroupImageFailed] = useState(false)
   const [confirmDeleteGroup, setConfirmDeleteGroup] = useState(false)
   const groupImageInputRef = useRef<HTMLInputElement>(null)
-  const [editBusy, setEditBusy] = useState(false)
   const [installedBots, setInstalledBots] = useState<(Bot & { permission: 'all' | 'admin' })[]>([])
   const [catalogBots, setCatalogBots] = useState<Bot[]>([])
   const [botsBusy, setBotsBusy] = useState(false)
@@ -463,6 +463,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setShowChatConfig(false)
     setConfigView('root')
     setConfirmDeleteGroup(false)
+    setEditingGroupName(false)
     if (!conversation || !me) return
 
     let cancelled = false
@@ -1366,16 +1367,18 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setEditImageUrl(conversation?.image_url || '')
     setEditInvitePermission(conversation?.invite_permission || 'all')
     setShowChatConfig(true)
-    setConfigView(canEditGroupInfo ? 'edit' : 'view')
+    setConfigView('root')
   }
 
   async function uploadGroupImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file || !me) return
+    if (!file || !me || !conversation) return
     setGroupImageUploading(true)
     try {
       const url = await uploadImage(file, me.id, 'group')
       setEditImageUrl(url)
+      await supabase.from('conversations').update({ image_url: url }).eq('id', conversation.id)
+      onConversationUpdate({ image_url: url })
     } catch (err) {
       setAddError(getErrorMessage(err))
     } finally {
@@ -1384,33 +1387,34 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     }
   }
 
-  async function saveGroupInfo() {
+  async function saveGroupName() {
+    setEditingGroupName(false)
     if (!conversation) return
-    setEditBusy(true)
-    try {
-      const patch: Partial<Conversation> = { name: editName.trim(), description: editDesc.trim() || null, image_url: sanitizeImageUrl(editImageUrl) }
-      if (isRoleGroup) patch.invite_permission = editInvitePermission
-      await supabase
-        .from('conversations')
-        .update(patch)
-        .eq('id', conversation.id)
-      onConversationUpdate(patch)
-      setConfigView('root')
-    } finally {
-      setEditBusy(false)
-    }
+    const trimmed = editName.trim()
+    if (!trimmed || trimmed === conversation.name) return
+    await supabase.from('conversations').update({ name: trimmed }).eq('id', conversation.id)
+    onConversationUpdate({ name: trimmed })
+  }
+
+  async function saveGroupDescription() {
+    if (!conversation) return
+    const trimmed = editDesc.trim() || null
+    await supabase.from('conversations').update({ description: trimmed }).eq('id', conversation.id)
+    onConversationUpdate({ description: trimmed })
+  }
+
+  async function saveInvitePermission(perm: 'all' | 'owner') {
+    if (!conversation) return
+    setEditInvitePermission(perm)
+    await supabase.from('conversations').update({ invite_permission: perm }).eq('id', conversation.id)
+    onConversationUpdate({ invite_permission: perm })
   }
 
   async function deleteGroup() {
     if (!conversation) return
-    setEditBusy(true)
-    try {
-      await supabase.from('conversations').delete().eq('id', conversation.id)
-      setShowChatConfig(false)
-      onBack()
-    } finally {
-      setEditBusy(false)
-    }
+    await supabase.from('conversations').delete().eq('id', conversation.id)
+    setShowChatConfig(false)
+    onBack()
   }
 
   const canInvite = !isRoleGroup || conversation?.invite_permission !== 'owner' || myMembership?.role === 'admin'
@@ -1884,10 +1888,10 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       <header className="chat-header">
         <button type="button" className="back-mobile icon-btn" aria-label="Voltar às conversas" onClick={onBack}><IconArrowLeft size={20} /></button>
         <div
-          style={{ position: 'relative', cursor: otherMember || isRoleGroup ? 'pointer' : 'default' }}
+          style={{ position: 'relative', cursor: otherMember || conversation.type === 'group' ? 'pointer' : 'default' }}
           onClick={() => {
             if (otherMember && me) setProfilePopupId(otherMemberEntry![0])
-            else if (isRoleGroup) openGroupEdit()
+            else if (conversation.type === 'group') openGroupEdit()
           }}
         >
           <div
@@ -1914,10 +1918,10 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         <div className="header-text">
           <div
             className="header-name"
-            style={{ cursor: otherMember || isRoleGroup ? 'pointer' : 'default' }}
+            style={{ cursor: otherMember || conversation.type === 'group' ? 'pointer' : 'default' }}
             onClick={() => {
             if (otherMember && me) setProfilePopupId(otherMemberEntry![0])
-            else if (isRoleGroup) openGroupEdit()
+            else if (conversation.type === 'group') openGroupEdit()
           }}
           >
             {otherMember ? (
@@ -1992,14 +1996,16 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               </button>
             </>
           )}
-          <button
-            type="button"
-            className="nudge-btn"
-            title="Config do chat"
-            onClick={() => { setShowChatConfig(true); setConfigView('root'); setAddError(null) }}
-          >
-            <IconPlus size={20} />
-          </button>
+          {conversation.type === 'dm' && (
+            <button
+              type="button"
+              className="nudge-btn"
+              title="Config do chat"
+              onClick={() => { setShowChatConfig(true); setConfigView('root'); setAddError(null) }}
+            >
+              <IconPlus size={20} />
+            </button>
+          )}
         </div>
       </header>
 
@@ -2010,24 +2016,18 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               className="group-info-avatar"
               style={{
                 cursor: canEditGroupInfo ? 'pointer' : 'default',
-                ...((configView === 'edit' ? editImageUrl : conversation.image_url && !groupImageFailed)
+                ...((editImageUrl || conversation.image_url) && !groupImageFailed
                   ? {}
                   : { background: colorFromId(conversation.id), color: '#fff' }),
               }}
-              onClick={() => {
-                if (configView === 'edit') groupImageInputRef.current?.click()
-                else if (canEditGroupInfo && configView === 'root') openGroupEdit()
-              }}
+              onClick={() => { if (canEditGroupInfo) groupImageInputRef.current?.click() }}
             >
-              {configView === 'edit' ? (
-                editImageUrl ? (
-                  <img src={editImageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  (editName || conversation.name || title)[0]?.toUpperCase()
-                )
-              ) : conversation.image_url && !groupImageFailed ? (
+              <input ref={groupImageInputRef} type="file" accept="image/*" hidden onChange={uploadGroupImage} />
+              {groupImageUploading ? (
+                '...'
+              ) : (editImageUrl || conversation.image_url) && !groupImageFailed ? (
                 <img
-                  src={conversation.image_url}
+                  src={editImageUrl || conversation.image_url!}
                   alt=""
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   onError={() => setGroupImageFailed(true)}
@@ -2036,15 +2036,50 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                 (conversation.name || title)[0]?.toUpperCase()
               )}
             </div>
-            <h2>{conversation.name || title}</h2>
+            {editingGroupName ? (
+              <input
+                className="group-info-name-input"
+                value={editName}
+                autoFocus
+                onChange={(e) => setEditName(e.target.value)}
+                onBlur={saveGroupName}
+                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+              />
+            ) : (
+              <h2 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                {conversation.name || title}
+                {canEditGroupInfo && (
+                  <button type="button" className="icon-btn" title="Editar nome" onClick={() => setEditingGroupName(true)}>
+                    <IconEdit size={14} />
+                  </button>
+                )}
+              </h2>
+            )}
             <p className="status">
               grupo ·{' '}
               <span style={{ textDecoration: 'underline', cursor: 'pointer' }} onClick={() => setConfigView('members')}>
                 {Object.keys(members).length} membros
               </span>
             </p>
-            {conversation.description && configView === 'root' && (
-              <p className="community-description">{conversation.description}</p>
+            {canEditGroupInfo ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%' }}>
+                <input
+                  placeholder="Descrição do grupo"
+                  style={{ flex: 1 }}
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                />
+                <button type="button" className="icon-btn" title="Salvar descrição" onClick={saveGroupDescription}>
+                  <IconCheck size={16} />
+                </button>
+              </div>
+            ) : (
+              conversation.description && <p className="community-description">{conversation.description}</p>
+            )}
+            {installedBots.length > 0 && (
+              <p className="status" style={{ marginTop: 4 }}>
+                Bots ativos: {installedBots.map((b) => b.name).join(', ')}
+              </p>
             )}
 
             {configView === 'root' && (
@@ -2061,12 +2096,41 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                     Convidar amigo
                   </button>
                 )}
-                {canEditGroupInfo && (
-                  <button type="button" onClick={openGroupEdit}>Editar nome/descrição/foto</button>
-                )}
                 <button type="button" onClick={() => setConfigView('members')}>Ver membros</button>
                 {canManageBots && (
-                  <button type="button" onClick={() => { loadCatalogBots(); setConfigView('bots') }}>Bots</button>
+                  <button type="button" onClick={() => { loadCatalogBots(); setConfigView('bots') }}>Configurar bots</button>
+                )}
+                {canManageBots && isRoleGroup && (
+                  <>
+                    <label className="group-info-section-label" style={{ marginTop: 6 }}>Quem pode convidar</label>
+                    <div className="theme-picker">
+                      <button
+                        type="button"
+                        className={`theme-option${editInvitePermission === 'all' ? ' active' : ''}`}
+                        onClick={() => saveInvitePermission('all')}
+                      >
+                        Todos
+                      </button>
+                      <button
+                        type="button"
+                        className={`theme-option${editInvitePermission === 'owner' ? ' active' : ''}`}
+                        onClick={() => saveInvitePermission('owner')}
+                      >
+                        Só o dono
+                      </button>
+                    </div>
+                  </>
+                )}
+                {conversation.created_by === me?.id && !confirmDeleteGroup && (
+                  <button type="button" className="danger" onClick={() => setConfirmDeleteGroup(true)}>
+                    Excluir grupo
+                  </button>
+                )}
+                {conversation.created_by === me?.id && confirmDeleteGroup && (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button type="button" className="danger" onClick={deleteGroup}>Confirmar exclusão</button>
+                    <button type="button" onClick={() => setConfirmDeleteGroup(false)}>cancelar</button>
+                  </div>
                 )}
               </div>
             )}
@@ -2151,53 +2215,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                 </div>
                 <button type="button" onClick={() => setConfigView('root')} style={{ marginTop: 10 }}>voltar</button>
               </>
-            )}
-            {configView === 'edit' && (
-              <div className="new-conv-form" style={{ padding: 0 }}>
-                <input placeholder="nome do grupo" value={editName} onChange={(e) => setEditName(e.target.value)} />
-                <input placeholder="descrição" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
-                <input ref={groupImageInputRef} type="file" accept="image/*" hidden onChange={uploadGroupImage} />
-                <button type="button" disabled={groupImageUploading} onClick={() => groupImageInputRef.current?.click()}>
-                  {groupImageUploading ? 'enviando...' : editImageUrl ? 'Trocar foto' : 'Escolher foto'}
-                </button>
-                {isRoleGroup && (
-                  <>
-                    <label className="group-info-section-label" style={{ marginTop: 6 }}>Quem pode convidar</label>
-                    <div className="theme-picker">
-                      <button
-                        type="button"
-                        className={`theme-option${editInvitePermission === 'all' ? ' active' : ''}`}
-                        onClick={() => setEditInvitePermission('all')}
-                      >
-                        Todos
-                      </button>
-                      <button
-                        type="button"
-                        className={`theme-option${editInvitePermission === 'owner' ? ' active' : ''}`}
-                        onClick={() => setEditInvitePermission('owner')}
-                      >
-                        Só o dono
-                      </button>
-                    </div>
-                  </>
-                )}
-                <button type="button" disabled={editBusy} onClick={saveGroupInfo}>Salvar</button>
-                {conversation.created_by === me?.id && !confirmDeleteGroup && (
-                  <button type="button" className="danger" disabled={editBusy} onClick={() => setConfirmDeleteGroup(true)} style={{ marginTop: 10 }}>
-                    Excluir grupo
-                  </button>
-                )}
-                {conversation.created_by === me?.id && confirmDeleteGroup && (
-                  <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                    <button type="button" className="danger" disabled={editBusy} onClick={deleteGroup}>
-                      Confirmar exclusão
-                    </button>
-                    <button type="button" disabled={editBusy} onClick={() => setConfirmDeleteGroup(false)}>
-                      cancelar
-                    </button>
-                  </div>
-                )}
-              </div>
             )}
             {configView === 'invite' && (
               <>
