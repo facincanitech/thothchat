@@ -54,6 +54,32 @@ export type TypingPayload = {
 
 export type PanelView = 'root' | 'contact' | 'group' | 'friends'
 
+export type Bot = {
+  id: string
+  slug: string
+  name: string
+  description: string
+  command_prefix: string
+  external_api_ready: boolean
+}
+
+export type GroupBot = {
+  conversation_id: string
+  bot_id: string
+  permission: 'all' | 'admin'
+  installed_by: string
+  installed_at: string
+}
+
+export type SonorSession = {
+  conversation_id: string
+  title: string
+  stream_url: string
+  is_hls: boolean
+  started_by: string
+  started_at: string
+}
+
 export type StatusPost = {
   id: string
   user_id: string

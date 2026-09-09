@@ -24,13 +24,15 @@ import {
   type EphemeralMediaView,
   type EphemeralOpenResult,
 } from '../lib/ephemeralMedia'
-import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconChevronDown, IconCrown, IconDownload, IconHeart, IconLock, IconLockOpen, IconMic, IconMinusCircle, IconNudge, IconPhone, IconPlus, IconSend, IconSmile, IconUser, IconVideo } from './icons'
+import { IconArrowLeft, IconAttach, IconBell, IconChat, IconCheck, IconCheckDouble, IconChevronDown, IconCrown, IconDownload, IconHeart, IconLock, IconLockOpen, IconMic, IconMinusCircle, IconNudge, IconPhone, IconPlus, IconSend, IconSmile, IconUser, IconVideo, IconVolume, IconVolumeOff } from './icons'
 import type { CallKind, CallPeer } from '../lib/call'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
 import { StyledName } from './StyledName'
 import { ProfilePopup } from './ProfilePopup'
-import type { Community, Conversation, Message, Profile } from '../types'
+import type { Bot, Community, Conversation, Message, Profile, SonorSession } from '../types'
 import { generateInviteCode, inviteUrl } from '../lib/inviteLink'
+import { parseCommand, rollDice, pickRandom } from '../lib/bots'
+import { fetchRandomStation, searchPublicStations, isHlsStream } from '../lib/sonor'
 
 const EMOJIS = [
   '😀', '😁', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😍',
@@ -306,7 +308,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [replayFor, setReplayFor] = useState<Message | null>(null)
   const [replayEvents, setReplayEvents] = useState<ReplayEvent[] | null>(null)
   const [showChatConfig, setShowChatConfig] = useState(false)
-  const [configView, setConfigView] = useState<'root' | 'invite' | 'edit' | 'view' | 'members'>('root')
+  const [configView, setConfigView] = useState<'root' | 'invite' | 'edit' | 'view' | 'members' | 'bots'>('root')
   const prevInviteDemoSignalRef = useRef(inviteDemoSignal)
 
   useEffect(() => {
@@ -336,6 +338,27 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [confirmDeleteGroup, setConfirmDeleteGroup] = useState(false)
   const groupImageInputRef = useRef<HTMLInputElement>(null)
   const [editBusy, setEditBusy] = useState(false)
+  const [installedBots, setInstalledBots] = useState<(Bot & { permission: 'all' | 'admin' })[]>([])
+  const [catalogBots, setCatalogBots] = useState<Bot[]>([])
+  const [botsBusy, setBotsBusy] = useState(false)
+  const [botsError, setBotsError] = useState<string | null>(null)
+  const [sonorSession, setSonorSession] = useState<SonorSession | null>(null)
+  const [sonorListening, setSonorListening] = useState(true)
+  const [sonorAudioError, setSonorAudioError] = useState<string | null>(null)
+  const sonorAudioRef = useRef<HTMLAudioElement>(null)
+  const sonorHlsRef = useRef<any>(null)
+
+  const botsById = useMemo(() => {
+    const map: Record<string, { username: string; display_name: string | null }> = {}
+    for (const b of installedBots) map[b.id] = { username: b.slug, display_name: b.name }
+    return map
+  }, [installedBots])
+
+  function authorLabel(authorId: string): string | null {
+    if (members[authorId]) return displayName(members[authorId])
+    if (botsById[authorId]) return botsById[authorId].display_name || botsById[authorId].username
+    return null
+  }
   const [inviteFriends, setInviteFriends] = useState<{ id: string; username: string; display_name: string | null; avatar_url: string | null; email: string }[]>([])
   const [inviteLinkBusy, setInviteLinkBusy] = useState(false)
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false)
@@ -611,6 +634,112 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   }, [conversation?.id, me?.id])
 
   useEffect(() => {
+    setInstalledBots([])
+    setSonorSession(null)
+    setSonorListening(true)
+    if (!conversation || !me) return
+
+    let cancelled = false
+
+    async function loadBots() {
+      const { data: rows } = await supabase
+        .from('group_bots')
+        .select('permission, bot:bots(*)')
+        .eq('conversation_id', conversation!.id)
+      if (!cancelled && rows) {
+        setInstalledBots(
+          rows
+            .filter((r: any) => r.bot)
+            .map((r: any) => ({ ...(r.bot as Bot), permission: r.permission as 'all' | 'admin' })),
+        )
+      }
+    }
+
+    async function loadSonor() {
+      const { data: session } = await supabase
+        .from('sonor_sessions')
+        .select('*')
+        .eq('conversation_id', conversation!.id)
+        .maybeSingle()
+      if (!cancelled) setSonorSession((session as SonorSession) || null)
+
+      const { data: listenerRow } = await supabase
+        .from('sonor_listeners')
+        .select('listening')
+        .eq('conversation_id', conversation!.id)
+        .eq('user_id', me!.id)
+        .maybeSingle()
+      if (!cancelled && listenerRow) setSonorListening(!!listenerRow.listening)
+    }
+
+    loadBots()
+    loadSonor()
+
+    const botsChannel = supabase
+      .channel(`bots:${conversation.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'group_bots', filter: `conversation_id=eq.${conversation.id}` },
+        () => loadBots(),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'sonor_sessions', filter: `conversation_id=eq.${conversation.id}` },
+        (payload) => {
+          if (payload.eventType === 'DELETE') setSonorSession(null)
+          else setSonorSession(payload.new as SonorSession)
+        },
+      )
+      .subscribe()
+
+    return () => {
+      cancelled = true
+      supabase.removeChannel(botsChannel)
+    }
+  }, [conversation?.id, me?.id])
+
+  useEffect(() => {
+    const audio = sonorAudioRef.current
+    if (!audio) return
+    if (sonorHlsRef.current) {
+      sonorHlsRef.current.destroy()
+      sonorHlsRef.current = null
+    }
+    if (!sonorSession) {
+      audio.pause()
+      audio.removeAttribute('src')
+      return
+    }
+    setSonorAudioError(null)
+    if (sonorSession.is_hls) {
+      import('hls.js').then(({ default: Hls }) => {
+        if (Hls.isSupported()) {
+          const hls = new Hls()
+          hls.loadSource(sonorSession.stream_url)
+          hls.attachMedia(audio)
+          hls.on(Hls.Events.ERROR, (_evt: unknown, data: { fatal?: boolean }) => {
+            if (data.fatal) setSonorAudioError('não consegui tocar essa rádio (formato HLS)')
+          })
+          sonorHlsRef.current = hls
+        } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
+          audio.src = sonorSession.stream_url
+        } else {
+          setSonorAudioError('essa rádio não é suportada nesse navegador ainda')
+        }
+      })
+    } else {
+      audio.src = sonorSession.stream_url
+    }
+  }, [sonorSession?.stream_url, sonorSession?.is_hls])
+
+  useEffect(() => {
+    const audio = sonorAudioRef.current
+    if (!audio) return
+    if (sonorSession && sonorListening) audio.play().catch(() => {})
+    else audio.pause()
+  }, [sonorListening, sonorSession])
+
+  useEffect(() => {
     if (atBottom) bottomRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' })
   }, [messages, liveTyping, atBottom])
 
@@ -881,6 +1010,185 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     await supabase.from('messages').insert({ conversation_id: conversation.id, author_id: me.id, content, kind: 'system' })
   }
 
+  function findInstalledBot(slug: string) {
+    return installedBots.find((b) => b.slug === slug) || null
+  }
+
+  async function postBotReply(botId: string, content: string) {
+    if (!conversation) return
+    await supabase.rpc('post_bot_message', { p_conversation_id: conversation.id, p_bot_id: botId, p_content: content, p_kind: 'text' })
+  }
+
+  async function loadCatalogBots() {
+    setBotsError(null)
+    const { data, error } = await supabase.from('bots').select('*').order('name')
+    if (error) setBotsError(getErrorMessage(error))
+    else setCatalogBots((data || []) as Bot[])
+  }
+
+  async function toggleInstallBot(bot: Bot, isInstalled: boolean) {
+    if (!conversation || !me) return
+    setBotsBusy(true)
+    setBotsError(null)
+    try {
+      if (isInstalled) {
+        const { error } = await supabase.from('group_bots').delete().eq('conversation_id', conversation.id).eq('bot_id', bot.id)
+        if (error) throw error
+        setInstalledBots((prev) => prev.filter((b) => b.id !== bot.id))
+      } else {
+        const { error } = await supabase
+          .from('group_bots')
+          .insert({ conversation_id: conversation.id, bot_id: bot.id, installed_by: me.id, permission: 'all' })
+        if (error) throw error
+        setInstalledBots((prev) => [...prev, { ...bot, permission: 'all' }])
+      }
+    } catch (err) {
+      setBotsError(getErrorMessage(err))
+    } finally {
+      setBotsBusy(false)
+    }
+  }
+
+  async function setBotPermission(botId: string, permission: 'all' | 'admin') {
+    if (!conversation) return
+    setBotsBusy(true)
+    setBotsError(null)
+    try {
+      const { error } = await supabase
+        .from('group_bots')
+        .update({ permission })
+        .eq('conversation_id', conversation.id)
+        .eq('bot_id', botId)
+      if (error) throw error
+      setInstalledBots((prev) => prev.map((b) => (b.id === botId ? { ...b, permission } : b)))
+    } catch (err) {
+      setBotsError(getErrorMessage(err))
+    } finally {
+      setBotsBusy(false)
+    }
+  }
+
+  async function handleSonorCommand(rawArgs: string) {
+    if (!conversation) return
+    const bot = findInstalledBot('sonor')
+    if (!bot) return
+    const [sub, ...restParts] = rawArgs.trim().split(/\s+/)
+    const subLower = (sub || '').toLowerCase()
+    const query = restParts.join(' ').replace(/^"|"$/g, '').trim().toLowerCase()
+
+    if (subLower === 'parar') {
+      await supabase.rpc('sonor_stop', { p_conversation_id: conversation.id })
+      await postBotReply(bot.id, 'parei de tocar')
+      return
+    }
+
+    if (subLower === 'musica') {
+      await postBotReply(bot.id, 'ainda não consigo tocar música do YouTube — em breve')
+      return
+    }
+
+    if (subLower === 'salvar') {
+      if (!sonorSession || !me) {
+        await postBotReply(bot.id, 'não tem nada tocando agora pra salvar')
+        return
+      }
+      const { error } = await supabase.from('sonor_favorites').insert({
+        user_id: me.id, name: sonorSession.title, stream_url: sonorSession.stream_url, is_hls: sonorSession.is_hls,
+      })
+      await postBotReply(bot.id, error ? 'não consegui salvar essa rádio' : `salvei "${sonorSession.title}" nas suas favoritas`)
+      return
+    }
+
+    if (subLower === 'radio') {
+      let chosen: { name: string; url: string; is_hls: boolean } | null = null
+
+      if (!query || query === 'aleatoria') {
+        const random = await fetchRandomStation()
+        if (random) chosen = { name: random.name, url: random.url, is_hls: isHlsStream(random.url) }
+      } else {
+        const { data: favRows } = await supabase
+          .from('sonor_favorites')
+          .select('name, stream_url, is_hls')
+          .eq('user_id', me?.id)
+          .ilike('name', `%${query}%`)
+          .limit(1)
+        if (favRows && favRows[0]) {
+          chosen = { name: favRows[0].name, url: favRows[0].stream_url, is_hls: favRows[0].is_hls }
+        } else {
+          const found = await searchPublicStations(query)
+          if (found[0]) chosen = { name: found[0].name, url: found[0].url, is_hls: isHlsStream(found[0].url) }
+        }
+      }
+
+      if (!chosen || !chosen.url) {
+        await postBotReply(bot.id, query ? `não achei "${query}"` : 'não consegui achar nenhuma rádio agora')
+        return
+      }
+
+      await supabase.rpc('sonor_set_session', {
+        p_conversation_id: conversation.id, p_title: chosen.name, p_stream_url: chosen.url, p_is_hls: chosen.is_hls,
+      })
+      await postBotReply(bot.id, `tocando: ${chosen.name}`)
+      return
+    }
+
+    await postBotReply(bot.id, 'comandos: /sonor radio "nome", /sonor radio aleatoria, /sonor salvar, /sonor parar')
+  }
+
+  async function handleBotCommand(text: string) {
+    if (!conversation || !me) return
+    const parsed = parseCommand(text)
+    if (!parsed) return
+
+    try {
+      if (parsed.command === '/dado') {
+        const bot = findInstalledBot('dado')
+        if (!bot) return
+        const sides = parseInt(parsed.args[0], 10) || 6
+        await postBotReply(bot.id, `🎲 rolou ${rollDice(sides)} (d${sides})`)
+      } else if (parsed.command === '/sorteio') {
+        const bot = findInstalledBot('dado')
+        if (!bot) return
+        const candidates = Object.entries(members).filter(([id]) => !botsById[id])
+        const picked = pickRandom(candidates)
+        if (!picked) return
+        await postBotReply(bot.id, `🎉 sorteado: ${displayName(picked[1])}`)
+      } else if (parsed.command === '/kick') {
+        const bot = findInstalledBot('admin')
+        if (!bot) return
+        const targetHandle = parsed.args[0]?.replace(/^@/, '')
+        const targetEntry = Object.entries(members).find(([, m]) => m.username === targetHandle)
+        if (!targetEntry) {
+          await postBotReply(bot.id, `não achei @${targetHandle} no grupo`)
+          return
+        }
+        const [targetId, targetMeta] = targetEntry
+        if (!canKick(targetMeta)) {
+          await postBotReply(bot.id, `você não pode remover ${displayName(targetMeta)}`)
+          return
+        }
+        await removeMember(targetId)
+        await postBotReply(bot.id, `${displayName(targetMeta)} foi removido por ${displayName(me)}`)
+      } else if (parsed.command === '/sonor') {
+        await handleSonorCommand(parsed.rest)
+      }
+    } catch (err) {
+      console.error('bot command failed', err)
+    }
+  }
+
+  async function toggleSonorListening() {
+    if (!conversation || !me) return
+    const next = !sonorListening
+    setSonorListening(next)
+    await supabase.from('sonor_listeners').upsert({ conversation_id: conversation.id, user_id: me.id, listening: next })
+    if (!next) {
+      const { data: rows } = await supabase.from('sonor_listeners').select('listening').eq('conversation_id', conversation.id)
+      const anyoneListening = (rows || []).some((r) => r.listening)
+      if (!anyoneListening) await supabase.rpc('sonor_stop', { p_conversation_id: conversation.id })
+    }
+  }
+
   async function loadInviteFriends() {
     if (!me) return
     const { data, error } = await supabase
@@ -961,6 +1269,11 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
       await postSystemMessage(`${displayName(me)} adicionou ${target.username} ao chat`)
 
+      const welcomeBot = findInstalledBot('boasvindas')
+      if (welcomeBot) {
+        await postBotReply(welcomeBot.id, `Bem-vindo(a), ${target.display_name || target.username}!`)
+      }
+
       setConfigView('root')
     } catch (err) {
       setAddError(getErrorMessage(err))
@@ -973,6 +1286,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const isRoleGroup = !!myMembership?.role
   const canManageMembers = !!myMembership && (myMembership.added_by === null || myMembership.is_leader)
   const canEditGroupInfo = isRoleGroup && (myMembership?.role === 'admin' || myMembership?.role === 'moderator')
+  const canManageBots = isRoleGroup ? myMembership?.role === 'admin' : canManageMembers
 
   function canKick(target: MemberMeta): boolean {
     if (!myMembership) return false
@@ -1394,6 +1708,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
 
     const recipientIds = Object.keys(members).filter((id) => id !== me.id)
     sendPush(recipientIds, displayName(me), content, conversation.id)
+
+    if (content.startsWith('/')) handleBotCommand(content)
   }
 
 
@@ -1570,6 +1886,14 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               </span>
             )}
           </div>
+          {sonorSession && (
+            <div className="header-sonor">
+              <span>{sonorAudioError || `tocando: ${sonorSession.title}`}</span>
+              <button type="button" className="icon-btn" title={sonorListening ? 'Silenciar Sonor' : 'Ouvir Sonor'} onClick={toggleSonorListening}>
+                {sonorListening ? <IconVolume size={16} /> : <IconVolumeOff size={16} />}
+              </button>
+            </div>
+          )}
         </div>
         <div className="header-actions">
           {conversation.type === 'dm' && otherMember && otherMemberEntry && (
@@ -1665,6 +1989,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                   <button type="button" onClick={openGroupEdit}>Editar nome/descrição/foto</button>
                 )}
                 <button type="button" onClick={() => setConfigView('members')}>Ver membros</button>
+                {canManageBots && (
+                  <button type="button" onClick={() => { loadCatalogBots(); setConfigView('bots') }}>Bots</button>
+                )}
               </div>
             )}
             {configView === 'members' && (
@@ -1710,6 +2037,43 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                     </div>
                   ))}
                 </div>
+              </>
+            )}
+            {configView === 'bots' && (
+              <>
+                <label className="group-info-section-label">Catálogo de bots</label>
+                {botsBusy && <div className="empty">carregando...</div>}
+                {botsError && <span className="auth-error">{botsError}</span>}
+                <div className="chat-config-members">
+                  {catalogBots.map((bot) => {
+                    const installed = installedBots.find((b) => b.id === bot.id)
+                    return (
+                      <div key={bot.id} className="chat-config-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <strong>{bot.name}</strong>{!bot.external_api_ready && ' (em breve)'}
+                          </span>
+                          <button type="button" disabled={botsBusy} onClick={() => toggleInstallBot(bot, !!installed)}>
+                            {installed ? 'remover' : 'instalar'}
+                          </button>
+                        </div>
+                        <span style={{ fontSize: '.75rem', color: 'var(--muted)' }}>{bot.description}</span>
+                        {installed && (
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '.8rem' }}>
+                            <input
+                              type="checkbox"
+                              style={{ width: 'auto' }}
+                              checked={installed.permission === 'admin'}
+                              onChange={(e) => setBotPermission(bot.id, e.target.checked ? 'admin' : 'all')}
+                            />
+                            só admin pode usar esse bot aqui
+                          </label>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+                <button type="button" onClick={() => setConfigView('root')} style={{ marginTop: 10 }}>voltar</button>
               </>
             )}
             {configView === 'edit' && (
@@ -1887,7 +2251,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                       style={{ cursor: members[m.author_id] ? 'pointer' : 'default' }}
                       onClick={() => members[m.author_id] && setProfilePopupId(m.author_id)}
                     >
-                      {members[m.author_id] ? displayName(members[m.author_id]) : '...'}
+                      {authorLabel(m.author_id) || '...'}
                     </span>
                   )}
                   <img src={m.content} alt="" className="sticker-img" onClick={() => setExpandedImage(m.content)} />
@@ -1904,7 +2268,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                       onClick={() => members[m.author_id] && setProfilePopupId(m.author_id)}
                     >
                       {/* estilo do nome fica só no card de perfil por pedido do usuário - members[id].name_style_* continua disponível se quiser trazer de volta aqui */}
-                      {members[m.author_id] ? displayName(members[m.author_id]) : '...'}
+                      {authorLabel(m.author_id) || '...'}
                     </span>
                   )}
                   {(() => {
@@ -2004,7 +2368,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                       onClick={() => members[m.author_id] && setProfilePopupId(m.author_id)}
                     >
                       {/* estilo do nome fica só no card de perfil por pedido do usuário - members[id].name_style_* continua disponível se quiser trazer de volta aqui */}
-                      {members[m.author_id] ? displayName(members[m.author_id]) : '...'}
+                      {authorLabel(m.author_id) || '...'}
                     </span>
                   )}
                   {m.reply_to_id && (() => {
@@ -2077,6 +2441,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           <input ref={mediaInputRef} type="file" accept="image/*,video/*" hidden onChange={handleAttachFilePicked} />
           <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" hidden onChange={handleAttachFilePicked} />
           <input ref={audioInputRef} type="file" accept="audio/*" hidden onChange={handleAttachFilePicked} />
+          <audio ref={sonorAudioRef} hidden />
         </div>
         <div className="composer-input-row">
           <div className="input">
