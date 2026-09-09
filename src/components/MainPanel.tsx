@@ -1186,11 +1186,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     const next = !sonorListening
     setSonorListening(next)
     await supabase.from('sonor_listeners').upsert({ conversation_id: conversation.id, user_id: me.id, listening: next })
-    if (!next) {
-      const { data: rows } = await supabase.from('sonor_listeners').select('listening').eq('conversation_id', conversation.id)
-      const anyoneListening = (rows || []).some((r) => r.listening)
-      if (!anyoneListening) await supabase.rpc('sonor_stop', { p_conversation_id: conversation.id })
-    }
   }
 
   async function handleSonorAudioError() {
