@@ -5,6 +5,7 @@ import { statusMediaUrl, resizeStatusImage, assertVideoWithinLimit, uploadStatus
 import { IconArrowLeft, IconPlus, IconSmile, IconTrash, IconUser } from './icons'
 import type { Profile, StatusPost } from '../types'
 
+const MAX_STATUSES_PER_DAY = 5
 const BG_COLORS = ['#5865f2', '#e85d75', '#2f9e6b', '#c77b2e', '#8b5cf6', '#0f766e', '#111827', '#7c2d12']
 const FONTS = ['inherit', 'Georgia, serif', '"Courier New", monospace', 'cursive']
 const STATUS_EMOJIS = ['😀', '😍', '🔥', '🎉', '❤️', '👍', '😂', '😢', '🙏', '✨', '☀️', '🌙']
@@ -122,6 +123,10 @@ export function StatusView({ me, onBack }: { me: Profile; onBack: () => void }) 
     e.target.value = ''
     setShowAddMenu(false)
     if (!file || !me) return
+    if (myStatuses.length >= MAX_STATUSES_PER_DAY) {
+      setError(`Você já postou ${MAX_STATUSES_PER_DAY} status hoje, aguarde algum expirar`)
+      return
+    }
     setPosting(true)
     setError(null)
     try {
@@ -150,6 +155,10 @@ export function StatusView({ me, onBack }: { me: Profile; onBack: () => void }) 
 
   async function postTextStatus() {
     if (!me || !composerText.trim()) return
+    if (myStatuses.length >= MAX_STATUSES_PER_DAY) {
+      setError(`Você já postou ${MAX_STATUSES_PER_DAY} status hoje, aguarde algum expirar`)
+      return
+    }
     setPosting(true)
     setError(null)
     try {
@@ -187,25 +196,23 @@ export function StatusView({ me, onBack }: { me: Profile; onBack: () => void }) 
         </div>
 
         <div className="chat-list">
-          <div className="chat" style={{ cursor: 'pointer' }} onClick={() => (myStatuses.length ? openViewer(me, myStatuses) : setShowAddMenu((v) => !v))}>
-            <div className="photo" style={{ position: 'relative' }}>
+          <div className="chat" style={{ cursor: 'pointer' }}>
+            <div className="photo" style={{ cursor: myStatuses.length ? 'pointer' : 'default' }} onClick={() => myStatuses.length && openViewer(me, myStatuses)}>
               {me.avatar_url ? <img src={me.avatar_url} alt="" /> : <IconUser size={20} />}
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setShowAddMenu((v) => !v) }}
-                style={{
-                  position: 'absolute', right: -4, bottom: -4, width: 20, height: 20, borderRadius: '50%',
-                  background: 'var(--green)', color: 'var(--on-button,#fff)', border: '2px solid var(--bg-panel)',
-                  display: 'grid', placeItems: 'center', cursor: 'pointer',
-                }}
-              >
-                <IconPlus size={12} />
-              </button>
             </div>
-            <div className="chat-info">
+            <div className="chat-info" style={{ cursor: myStatuses.length ? 'pointer' : 'default' }} onClick={() => myStatuses.length && openViewer(me, myStatuses)}>
               <div className="row"><div className="name">Meu status</div></div>
               <div className="last-message">{myStatuses.length ? `${myStatuses.length} atualização(ões) · toque pra ver` : 'Clique para atualizar seu status'}</div>
             </div>
+            <button
+              type="button"
+              className="icon-btn"
+              title="Adicionar status"
+              onClick={(e) => { e.stopPropagation(); setShowAddMenu((v) => !v) }}
+              style={{ marginLeft: 'auto', flexShrink: 0 }}
+            >
+              <IconPlus size={18} />
+            </button>
           </div>
 
           {showAddMenu && (

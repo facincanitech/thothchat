@@ -422,7 +422,10 @@ function App() {
     const target = nudgers[0]
     setNudgers((prev) => prev.filter((n) => n.conversationId !== target.conversationId))
     const { data } = await supabase.from('conversations').select('*').eq('id', target.conversationId).single()
-    if (data) setSelected(data as Conversation)
+    if (data) {
+      setStatusOpen(false)
+      setSelected(data as Conversation)
+    }
   }
 
   function requireAuth(action: () => void) {
@@ -436,6 +439,7 @@ function App() {
 
   function openNewConversation() {
     requireAuth(() => {
+      setStatusOpen(false)
       setAccountOpen(false)
       setGroupsOpen(false)
       setPanelView('root')
@@ -445,6 +449,7 @@ function App() {
 
   function openAccount() {
     requireAuth(() => {
+      setStatusOpen(false)
       setPanelOpen(false)
       setGroupsOpen(false)
       setAccountOpen(true)
@@ -454,6 +459,7 @@ function App() {
 
   function openGroups() {
     requireAuth(() => {
+      setStatusOpen(false)
       setPanelOpen(false)
       setAccountOpen(false)
       setGroupsOpen(true)
