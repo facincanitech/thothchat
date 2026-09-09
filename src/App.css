@@ -163,6 +163,8 @@ body{
 }
 .chat.selected{background:var(--bg-selected);border-color:color-mix(in srgb,var(--green) 14%,transparent)}
 .chat.selected::before{content:"";position:absolute;left:0;top:25px;bottom:25px;width:3px;background:var(--green);border-radius:0 3px 3px 0}
+.chat.dragging{opacity:.5}
+.chat-grip{display:flex;align-items:center;color:var(--muted);cursor:grab;touch-action:none;flex-shrink:0;margin-right:-4px}
 .photo{
   width:46px;height:46px;border-radius:15px;object-fit:cover;flex:none;
   background:linear-gradient(135deg,var(--avatar-bg),var(--bg-surface-2));display:grid;place-items:center;

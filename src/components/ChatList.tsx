@@ -345,6 +345,72 @@ export function ChatList({
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
   }
+
+  const [chatOrder, setChatOrder] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('ferus-chat-order')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) return parsed
+      }
+    } catch {
+      // ignore
+    }
+    return []
+  })
+  const [dragChatId, setDragChatId] = useState<string | null>(null)
+  const draggedChatIdRef = useRef<string | null>(null)
+  const chatListRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ferus-chat-order', JSON.stringify(chatOrder))
+    } catch {
+      // ignore
+    }
+  }, [chatOrder])
+
+  function startChatDrag(id: string, container: HTMLDivElement, currentOrder: string[]) {
+    draggedChatIdRef.current = id
+    setDragChatId(id)
+
+    function onMove(e: PointerEvent) {
+      const dragged = draggedChatIdRef.current
+      if (!dragged) return
+      const y = e.clientY
+      const rows = Array.from(container.querySelectorAll<HTMLElement>('[data-chat-id]'))
+      let target: string | null = null
+      for (const el of rows) {
+        const rect = el.getBoundingClientRect()
+        if (y >= rect.top && y <= rect.bottom) {
+          target = el.dataset.chatId || null
+          break
+        }
+      }
+      if (target && target !== dragged) {
+        setChatOrder((prev) => {
+          const base = prev.length ? prev : currentOrder
+          const next = [...base]
+          if (!next.includes(dragged)) next.push(dragged)
+          if (!next.includes(target!)) next.push(target!)
+          const from = next.indexOf(dragged)
+          const to = next.indexOf(target!)
+          next.splice(from, 1)
+          next.splice(to, 0, dragged)
+          return next
+        })
+      }
+    }
+    function onUp() {
+      draggedChatIdRef.current = null
+      setDragChatId(null)
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+
   const [dmEmail, setDmEmail] = useState('')
   const [inviteSent, setInviteSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -1382,6 +1448,13 @@ export function ChatList({
     })
     .sort((a, b) => {
       if (activeFilter === 'favorites') return (a.favoritedAt || '').localeCompare(b.favoritedAt || '')
+      if (chatOrder.length) {
+        const ia = chatOrder.indexOf(a.id)
+        const ib = chatOrder.indexOf(b.id)
+        if (ia !== -1 && ib !== -1) return ia - ib
+        if (ia !== -1) return -1
+        if (ib !== -1) return 1
+      }
       if (a.isFavorite !== b.isFavorite) return a.isFavorite ? -1 : 1
       if (a.isFavorite) return a.label.localeCompare(b.label, 'pt-BR')
       return 0
@@ -1531,7 +1604,7 @@ export function ChatList({
               ))}
             </div>
           ) : (
-            <div className="chat-list">
+            <div className="chat-list" ref={chatListRef}>
               {!me && <div className="empty">Entre para ver suas conversas</div>}
               {me && filtered.length === 0 && conversations.length === 0 && !query && activeFilter === 'all' && (
                 <div className="empty empty-cta">
@@ -1554,10 +1627,24 @@ export function ChatList({
               {filtered.map((c) => (
                 <div
                   key={c.id}
-                  className={`chat${selected?.id === c.id ? ' selected' : ''}`}
+                  data-chat-id={c.id}
+                  className={`chat${selected?.id === c.id ? ' selected' : ''}${dragChatId === c.id ? ' dragging' : ''}`}
                   onClick={() => selectConversation(c)}
                   onContextMenu={(e) => handleContextMenu(e, c)}
                 >
+                  {activeFilter === 'all' && (
+                    <span
+                      className="chat-grip"
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        if (chatListRef.current) startChatDrag(c.id, chatListRef.current, filtered.map((x) => x.id))
+                      }}
+                    >
+                      <IconGrip size={14} />
+                    </span>
+                  )}
                   <div className="photo">
                     {c.avatarUrl ? <img src={c.avatarUrl} alt="" /> : c.label[0]?.toUpperCase()}
                   </div>

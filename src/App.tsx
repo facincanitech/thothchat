@@ -6,6 +6,7 @@ import { Rail } from './components/Rail'
 import { ChatList } from './components/ChatList'
 import { MainPanel } from './components/MainPanel'
 import { CommunityView } from './components/CommunityView'
+import { StatusView } from './components/StatusView'
 import { AuthModal } from './components/AuthModal'
 import { CallOverlay, type CallOverlayHandle } from './components/CallOverlay'
 import type { Community, Conversation, PanelView, Profile } from './types'
@@ -79,7 +80,7 @@ function App() {
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [])
 
-  const navStateRef = useRef({ panelOpen: false, accountOpen: false, groupsOpen: false, selectedCommunity: false, selected: false })
+  const navStateRef = useRef({ panelOpen: false, accountOpen: false, groupsOpen: false, statusOpen: false, selectedCommunity: false, selected: false })
 
   const [session, setSession] = useState<Session | null | undefined>(undefined)
   const [profile, setProfile] = useState<Profile | null>(() => {
@@ -145,6 +146,7 @@ function App() {
     setGroupsOpen(false)
   }
   const [groupsOpen, setGroupsOpen] = useState(false)
+  const [statusOpen, setStatusOpen] = useState(false)
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
@@ -152,8 +154,8 @@ function App() {
   }, [selected?.id])
 
   useEffect(() => {
-    navStateRef.current = { panelOpen, accountOpen, groupsOpen, selectedCommunity: !!selectedCommunity, selected: !!selected }
-  }, [panelOpen, accountOpen, groupsOpen, selectedCommunity, selected])
+    navStateRef.current = { panelOpen, accountOpen, groupsOpen, statusOpen, selectedCommunity: !!selectedCommunity, selected: !!selected }
+  }, [panelOpen, accountOpen, groupsOpen, statusOpen, selectedCommunity, selected])
 
   useEffect(() => {
     const listenerPromise = CapacitorApp.addListener('backButton', () => {
@@ -161,6 +163,7 @@ function App() {
       if (s.panelOpen) setPanelOpen(false)
       else if (s.accountOpen) setAccountOpen(false)
       else if (s.groupsOpen) setGroupsOpen(false)
+      else if (s.statusOpen) setStatusOpen(false)
       else if (s.selectedCommunity) setSelectedCommunity(null)
       else if (s.selected) setSelected(null)
       else CapacitorApp.exitApp()
@@ -463,22 +466,37 @@ function App() {
     setPanelOpen(false)
     setAccountOpen(false)
     setGroupsOpen(false)
+    setStatusOpen(false)
+  }
+
+  function openStatus() {
+    setSelected(null)
+    setSelectedCommunity(null)
+    setPanelOpen(false)
+    setAccountOpen(false)
+    setGroupsOpen(false)
+    setStatusOpen(true)
   }
 
   const anyPanelOpen = panelOpen || accountOpen || groupsOpen
 
   return (
-    <div className={`app${selected || selectedCommunity ? ' chat-open' : ''}${anyPanelOpen ? ' panel-open' : ''}`}>
+    <div className={`app${(selected || selectedCommunity) && !statusOpen ? ' chat-open' : ''}${anyPanelOpen ? ' panel-open' : ''}`}>
       <Rail
         me={profile}
         onRequireAuth={() => requireAuth(() => {})}
         onNewConversation={openNewConversation}
         onOpenAccount={openAccount}
         onOpenGroups={openGroups}
+        onOpenStatus={openStatus}
         onGoHome={openNudger}
         nudgeCount={nudgers.length}
-        activeSection={accountOpen ? 'account' : panelOpen ? 'new' : groupsOpen || selectedCommunity ? 'groups' : 'chats'}
+        activeSection={statusOpen ? 'status' : accountOpen ? 'account' : panelOpen ? 'new' : groupsOpen || selectedCommunity ? 'groups' : 'chats'}
       />
+      {statusOpen && profile ? (
+        <StatusView me={profile} onBack={() => setStatusOpen(false)} />
+      ) : (
+      <>
       <ChatList
         me={profile}
         selected={selected}
@@ -531,6 +549,8 @@ function App() {
           onOpenCommunity={(c) => { setSelected(null); setCommunityTab('home'); setSelectedCommunity(c) }}
           onStartCall={(peer, kind) => selected && callOverlayRef.current?.startCall({ peer, kind, conversationId: selected.id })}
         />
+      )}
+      </>
       )}
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
       <CallOverlay ref={callOverlayRef} me={profile} />

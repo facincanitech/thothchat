@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { displayName } from '../lib/displayName'
-import { IconBell, IconChat, IconGroup, IconPlus, IconStar, IconUser } from './icons'
+import { IconBell, IconChat, IconGroup, IconPlus, IconStar, IconStatus, IconUser } from './icons'
 import type { Profile } from '../types'
 import thothLogo from '../../logo/toth_chat.png'
 
@@ -11,12 +11,13 @@ type Props = {
   onNewConversation: () => void
   onOpenAccount: () => void
   onOpenGroups: () => void
+  onOpenStatus: () => void
   onGoHome: () => void
   nudgeCount: number
-  activeSection: 'chats' | 'new' | 'groups' | 'account'
+  activeSection: 'chats' | 'new' | 'groups' | 'account' | 'status'
 }
 
-export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onOpenGroups, onGoHome, nudgeCount, activeSection }: Props) {
+export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onOpenGroups, onOpenStatus, onGoHome, nudgeCount, activeSection }: Props) {
   const [pendingCount, setPendingCount] = useState(0)
 
   useEffect(() => {
@@ -67,6 +68,14 @@ export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onOp
     onOpenGroups()
   }
 
+  function handleStatusClick() {
+    if (!me) {
+      onRequireAuth()
+      return
+    }
+    onOpenStatus()
+  }
+
   return (
     <aside className="rail" aria-label="Navegação principal">
       <div className="rail-brand" aria-label="ThothChat">
@@ -98,6 +107,11 @@ export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onOp
           </span>
         )}
       </div>
+      <button type="button" className="rail-item rail-link" title="Status" onClick={handleStatusClick}
+        aria-current={activeSection === 'status' ? 'page' : undefined}>
+        <span className="rail-symbol"><IconStatus size={22} /></span>
+        <span className="rail-label">Status</span>
+      </button>
       <button type="button" className="rail-item rail-link" title="Grupos e comunidades" onClick={handleGroupsClick}
         aria-current={activeSection === 'groups' ? 'page' : undefined}>
         <span className="rail-symbol"><IconGroup /></span>

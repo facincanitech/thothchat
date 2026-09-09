@@ -54,6 +54,18 @@ export type TypingPayload = {
 
 export type PanelView = 'root' | 'contact' | 'group' | 'friends'
 
+export type StatusPost = {
+  id: string
+  user_id: string
+  kind: 'image' | 'video' | 'text'
+  media_path: string | null
+  text_content: string | null
+  bg_color: string | null
+  text_color: string | null
+  font: string | null
+  created_at: string
+}
+
 export type Community = {
   id: string
   name: string

@@ -438,3 +438,12 @@ export function IconVolumeOff({ size = 20 }: IconProps) {
     </svg>
   )
 }
+
+export function IconStatus({ size = 20 }: IconProps) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <circle cx="12" cy="12" r="9" strokeDasharray="6 4" />
+      <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
