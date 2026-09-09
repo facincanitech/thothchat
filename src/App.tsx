@@ -6,7 +6,6 @@ import { Rail } from './components/Rail'
 import { ChatList } from './components/ChatList'
 import { MainPanel } from './components/MainPanel'
 import { CommunityView } from './components/CommunityView'
-import { StatusView } from './components/StatusView'
 import { AuthModal } from './components/AuthModal'
 import { CallOverlay, type CallOverlayHandle } from './components/CallOverlay'
 import type { Community, Conversation, PanelView, Profile } from './types'
@@ -506,10 +505,10 @@ function App() {
     setInviteDemoSignal((k) => k + 1)
   }
 
-  const anyPanelOpen = panelOpen || accountOpen || groupsOpen
+  const anyPanelOpen = panelOpen || accountOpen || groupsOpen || statusOpen
 
   return (
-    <div className={`app${(selected || selectedCommunity) && !statusOpen ? ' chat-open' : ''}${anyPanelOpen ? ' panel-open' : ''}`}>
+    <div className={`app${selected || selectedCommunity ? ' chat-open' : ''}${anyPanelOpen ? ' panel-open' : ''}`}>
       <Rail
         me={profile}
         onRequireAuth={() => requireAuth(() => {})}
@@ -521,10 +520,6 @@ function App() {
         nudgeCount={nudgers.length}
         activeSection={statusOpen ? 'status' : accountOpen ? 'account' : panelOpen ? 'new' : groupsOpen || selectedCommunity ? 'groups' : 'chats'}
       />
-      {statusOpen && profile ? (
-        <StatusView me={profile} onBack={() => setStatusOpen(false)} />
-      ) : (
-      <>
       <ChatList
         me={profile}
         selected={selected}
@@ -546,6 +541,8 @@ function App() {
         groupsRestoreView={groupsRestoreView}
         onConsumeGroupsRestore={() => setGroupsRestoreView(null)}
         onLeaveGroupsPanel={leaveGroupsPanel}
+        statusOpen={statusOpen}
+        onStatusOpenChange={setStatusOpen}
         onOpenStatus={openStatus}
         onOpenGroupsTip={openGroups}
         onRequestInviteDemo={openChatInviteDemo}
@@ -581,8 +578,6 @@ function App() {
           onOpenCommunity={(c) => { setSelected(null); setCommunityTab('home'); setSelectedCommunity(c) }}
           onStartCall={(peer, kind) => selected && callOverlayRef.current?.startCall({ peer, kind, conversationId: selected.id })}
         />
-      )}
-      </>
       )}
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
       <CallOverlay ref={callOverlayRef} me={profile} />

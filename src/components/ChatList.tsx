@@ -6,6 +6,7 @@ import { uploadImage } from '../lib/uploadImage'
 import { displayName } from '../lib/displayName'
 import { AvatarBox } from './AvatarBox'
 import { NotificationCenter } from './NotificationCenter'
+import { StatusView } from './StatusView'
 import { StyledName, NAME_FONTS, NAME_EFFECTS } from './StyledName'
 import { readCache, writeCache } from '../lib/cache'
 import { APP_VERSION, APK_DOWNLOAD_URL } from '../version'
@@ -190,6 +191,8 @@ type Props = {
   onCommunityBack: () => void
   theme: 'dark' | 'light' | 'contrast'
   onThemeChange: (theme: 'dark' | 'light' | 'contrast') => void
+  statusOpen: boolean
+  onStatusOpenChange: (open: boolean) => void
   onOpenStatus: () => void
   onOpenGroupsTip: () => void
   onRequestInviteDemo: (c: Conversation) => void
@@ -251,6 +254,8 @@ export function ChatList({
   onCommunityBack,
   theme,
   onThemeChange,
+  statusOpen,
+  onStatusOpenChange,
   onOpenStatus,
   onOpenGroupsTip,
   onRequestInviteDemo,
@@ -2513,6 +2518,8 @@ export function ChatList({
           </div>
         )}
       </div>
+
+      {me && <StatusView me={me} open={statusOpen} onBack={() => onStatusOpenChange(false)} />}
     </section>
   )
 }

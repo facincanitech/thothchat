@@ -16,7 +16,7 @@ type StatusGroup = {
   allViewed: boolean
 }
 
-export function StatusView({ me, onBack }: { me: Profile; onBack: () => void }) {
+export function StatusView({ me, open, onBack }: { me: Profile; open: boolean; onBack: () => void }) {
   const [myStatuses, setMyStatuses] = useState<StatusPost[]>([])
   const [groups, setGroups] = useState<StatusGroup[]>([])
   const [viewedIds, setViewedIds] = useState<Set<string>>(new Set())
@@ -185,14 +185,12 @@ export function StatusView({ me, onBack }: { me: Profile; onBack: () => void }) 
 
   return (
     <>
-      <section className="chats">
-        <div className="top">
-          <button type="button" className="icon-btn" onClick={onBack} style={{ marginRight: 8 }}>
+      <div className={`new-conv-panel${open ? ' open' : ''}`}>
+        <div className="new-conv-header">
+          <button type="button" className="icon-btn" onClick={onBack}>
             <IconArrowLeft size={20} />
           </button>
-          <div className="brand-lockup">
-            <div className="brand">Status</div>
-          </div>
+          <div className="brand" style={{ fontSize: 18 }}>Status</div>
         </div>
 
         <div className="chat-list">
@@ -244,15 +242,6 @@ export function StatusView({ me, onBack }: { me: Profile; onBack: () => void }) 
           ))}
           {groups.length === 0 && <div className="empty">Nenhum status recente dos seus amigos</div>}
         </div>
-      </section>
-
-      <div className="main" style={{ alignItems: 'center', justifyContent: 'center', display: 'flex' }}>
-        {!viewerQueue && (
-          <div className="empty-card">
-            <h2>Compartilhe atualizações de status</h2>
-            <p>Compartilhe fotos, vídeos e textos que desaparecem após 24 horas.</p>
-          </div>
-        )}
       </div>
 
       {showComposer && (
