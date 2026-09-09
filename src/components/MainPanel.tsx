@@ -349,6 +349,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [sonorAudioError, setSonorAudioError] = useState<string | null>(null)
   const sonorAudioRef = useRef<HTMLAudioElement>(null)
   const sonorHlsRef = useRef<any>(null)
+  const sonorRetryCountRef = useRef(0)
 
   const botsById = useMemo(() => {
     const map: Record<string, { username: string; display_name: string | null }> = {}
@@ -713,6 +714,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       return
     }
     setSonorAudioError(null)
+    sonorRetryCountRef.current = 0
     if (sonorSession.is_hls) {
       import('hls.js').then(({ default: Hls }) => {
         if (Hls.isSupported()) {
@@ -1189,6 +1191,18 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       const anyoneListening = (rows || []).some((r) => r.listening)
       if (!anyoneListening) await supabase.rpc('sonor_stop', { p_conversation_id: conversation.id })
     }
+  }
+
+  async function handleSonorAudioError() {
+    if (!conversation || !me || !sonorSession) return
+    if (sonorSession.started_by !== me.id) return
+    if (sonorRetryCountRef.current >= 2) return
+    sonorRetryCountRef.current += 1
+    const random = await fetchRandomStation()
+    if (!random) return
+    await supabase.rpc('sonor_set_session', {
+      p_conversation_id: conversation.id, p_title: random.name, p_stream_url: random.url, p_is_hls: isHlsStream(random.url),
+    })
   }
 
   async function loadInviteFriends() {
@@ -2453,7 +2467,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           <input ref={mediaInputRef} type="file" accept="image/*,video/*" hidden onChange={handleAttachFilePicked} />
           <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" hidden onChange={handleAttachFilePicked} />
           <input ref={audioInputRef} type="file" accept="audio/*" hidden onChange={handleAttachFilePicked} />
-          <audio ref={sonorAudioRef} hidden />
+          <audio ref={sonorAudioRef} hidden onError={handleSonorAudioError} />
         </div>
         <div className="composer-input-row">
           <div className="input">

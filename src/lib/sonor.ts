@@ -18,7 +18,7 @@ async function fetchDiscoveryPool(): Promise<RadioStation[]> {
     DISCOVERY_COUNTRIES.map(async (cc) => {
       try {
         const res = await fetch(
-          `${RADIO_BROWSER_BASE}?limit=99999&hidebroken=true&order=clickcount&reverse=true&countrycode=${cc}`,
+          `${RADIO_BROWSER_BASE}?limit=20&hidebroken=true&order=clickcount&reverse=true&countrycode=${cc}`,
         )
         if (!res.ok) return []
         const rows = (await res.json()) as RawStation[]
