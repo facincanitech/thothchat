@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { displayName } from '../lib/displayName'
-import { sanitizeImageUrl } from '../lib/imageUrl'
 import { uploadImage } from '../lib/uploadImage'
 import { getErrorMessage } from '../lib/errors'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
@@ -205,6 +204,8 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
     try {
       const url = await uploadImage(file, me.id, 'community')
       setEditImageUrl(url)
+      await supabase.from('communities').update({ image_url: url }).eq('id', community.id)
+      onCommunityUpdate({ image_url: url })
     } catch (err) {
       setInfoError(getErrorMessage(err))
     } finally {
@@ -237,30 +238,34 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
     }
   }
 
-  async function saveCommunityInfo() {
+  async function saveCommunityName() {
     const name = editName.trim()
-    if (!name) return
-    setInfoBusy(true)
-    setInfoError(null)
-    try {
-      const patch = {
-        name,
-        image_url: sanitizeImageUrl(editImageUrl),
-        category: editCategory.trim() || null,
-        language: editLanguage.trim() || null,
-        is_private: editIsPrivate,
-      }
-      const { error: err } = await supabase
-        .from('communities')
-        .update(patch)
-        .eq('id', community.id)
-      if (err) throw err
-      onCommunityUpdate(patch)
-    } catch (err) {
-      setInfoError(getErrorMessage(err))
-    } finally {
-      setInfoBusy(false)
-    }
+    if (!name || name === community.name) return
+    const { error } = await supabase.from('communities').update({ name }).eq('id', community.id)
+    if (error) setInfoError(getErrorMessage(error))
+    else onCommunityUpdate({ name })
+  }
+
+  async function saveCommunityCategory(value: string) {
+    setEditCategory(value)
+    const category = value.trim() || null
+    const { error } = await supabase.from('communities').update({ category }).eq('id', community.id)
+    if (error) setInfoError(getErrorMessage(error))
+    else onCommunityUpdate({ category })
+  }
+
+  async function saveCommunityLanguage() {
+    const language = editLanguage.trim() || null
+    const { error } = await supabase.from('communities').update({ language }).eq('id', community.id)
+    if (error) setInfoError(getErrorMessage(error))
+    else onCommunityUpdate({ language })
+  }
+
+  async function saveCommunityPrivacy(value: boolean) {
+    setEditIsPrivate(value)
+    const { error } = await supabase.from('communities').update({ is_private: value }).eq('id', community.id)
+    if (error) setInfoError(getErrorMessage(error))
+    else onCommunityUpdate({ is_private: value })
   }
 
   async function deleteCommunity() {
@@ -636,7 +641,14 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
       {activeTab === 'info' && (
         <section className="messages community-feed community-settings">
           <div className="settings-community-identity">
-            <AvatarBox src={community.image_url} id={community.id} fallbackLetter={community.name[0] || 'C'} className="group-info-avatar" />
+            <input ref={imageInputRef} type="file" accept="image/*" hidden onChange={uploadCommunityImage} />
+            <div
+              onClick={() => isManager && imageInputRef.current?.click()}
+              style={{ cursor: isManager ? 'pointer' : 'default', display: 'inline-block' }}
+            >
+              <AvatarBox src={editImageUrl || community.image_url} id={community.id} fallbackLetter={community.name[0] || 'C'} className="group-info-avatar" />
+            </div>
+            {imageUploading && <p className="status">enviando...</p>}
             <h2>{community.name}</h2>
             <p className="status">{community.is_private ? 'Comunidade particular' : 'Comunidade pública'} · {memberCount} membros</p>
           </div>
@@ -646,24 +658,20 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
             <summary><IconEdit size={20} /> Detalhes da comunidade</summary>
             <div className="community-composer">
               <label>Nome</label>
-              <input value={editName} onChange={(e) => setEditName(e.target.value)} />
+              <input value={editName} onChange={(e) => setEditName(e.target.value)} onBlur={saveCommunityName} />
               <label style={{ marginTop: 8 }}>Categoria</label>
-              <select value={editCategory} onChange={(e) => setEditCategory(e.target.value)}>
+              <select value={editCategory} onChange={(e) => saveCommunityCategory(e.target.value)}>
                 <option value="">categoria</option>
                 {CATEGORY_OPTIONS.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
               <label style={{ marginTop: 8 }}>Idioma</label>
-              <input value={editLanguage} onChange={(e) => setEditLanguage(e.target.value)} placeholder="idioma" />
+              <input value={editLanguage} onChange={(e) => setEditLanguage(e.target.value)} onBlur={saveCommunityLanguage} placeholder="idioma" />
               <label style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input type="checkbox" checked={editIsPrivate} onChange={(e) => setEditIsPrivate(e.target.checked)} style={{ width: 'auto' }} />
+                <input type="checkbox" checked={editIsPrivate} onChange={(e) => saveCommunityPrivacy(e.target.checked)} style={{ width: 'auto' }} />
                 Comunidade particular (só membros veem tópicos e comentários)
               </label>
-              <input ref={imageInputRef} type="file" accept="image/*" hidden onChange={uploadCommunityImage} />
-              <button type="button" disabled={imageUploading} onClick={() => imageInputRef.current?.click()} style={{ marginTop: 8 }}>
-                {imageUploading ? 'enviando...' : 'Trocar imagem da comunidade'}
-              </button>
               <p className="status" style={{ margin: '4px 0 0' }}>
                 criada em {new Date(community.created_at).toLocaleDateString('pt-BR')}
               </p>
@@ -688,10 +696,11 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
                 )}
               </div>
               </details>
-              <button type="button" disabled={infoBusy} onClick={saveCommunityInfo} style={{ marginTop: 8 }}>Salvar</button>
               {infoError && <span className="auth-error">{infoError}</span>}
               {isOwner && !confirmDeleteCommunity && (
-                <SettingsRow icon={<IconTrash size={21} />} title="Excluir comunidade" danger onClick={() => setConfirmDeleteCommunity(true)} />
+                <button type="button" className="settings-danger-btn" onClick={() => setConfirmDeleteCommunity(true)}>
+                  <IconTrash size={18} /> Excluir comunidade
+                </button>
               )}
               {isOwner && confirmDeleteCommunity && (
                 <div style={{ display: 'flex', gap: 8, padding: '10px 5px' }}>
@@ -725,8 +734,13 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
                 <div key={m.id} className="member-table-row">
                   <div className="member-table-name">
                     {displayName(m)}
-                    {m.id === community.created_by ? ' (dono)' : m.is_editor ? ' (editor)' : ''}
-                    {m.id === me.id ? ' (você)' : ''}
+                    {(m.id === community.created_by || m.is_editor || m.id === me.id) && (
+                      <span className="member-table-tags">
+                        {[m.id === community.created_by ? 'dono' : m.is_editor ? 'editor' : null, m.id === me.id ? 'você' : null]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
+                    )}
                   </div>
                   <div className="member-table-email">{m.email}</div>
                   <div className="member-table-date">

@@ -1328,7 +1328,12 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         await postBotReply(welcomeBot.id, `Bem-vindo(a), ${target.display_name || target.username}!`)
       }
 
-      setConfigView('root')
+      if (isRoleGroup) {
+        setConfigView('root')
+      } else {
+        setShowChatConfig(false)
+        if (otherMemberEntry) setProfilePopupId(otherMemberEntry[0])
+      }
     } catch (err) {
       setAddError(getErrorMessage(err))
     } finally {
@@ -2101,7 +2106,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                   </div>
                 </div>}
                 {conversation.created_by === me?.id && !confirmDeleteGroup && (
-                  <SettingsRow icon={<IconMinusCircle size={21} />} title="Excluir grupo" danger onClick={() => setConfirmDeleteGroup(true)} />
+                  <button type="button" className="settings-danger-btn" onClick={() => setConfirmDeleteGroup(true)}>
+                    <IconMinusCircle size={18} /> Excluir grupo
+                  </button>
                 )}
                 {conversation.created_by === me?.id && confirmDeleteGroup && (
                   <div style={{ display: 'flex', gap: 8, padding: '10px 5px' }}>
