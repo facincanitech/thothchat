@@ -12,10 +12,17 @@ type RawStation = { name: string; url: string; url_resolved?: string; countrycod
 
 let discoveryPoolCache: RadioStation[] | null = null
 
-function isSecureStream(url: string): boolean {
-  // ThothChat roda em https:// — stream http:// e bloqueado pelo navegador (mixed content),
-  // mesmo que a radio funcione normal em outros apps que nao tem essa restricao.
-  return url.toLowerCase().startsWith('https://')
+const RADIO_PROXY = 'https://eeyypnkbiejvficybhxu.supabase.co/functions/v1/radio-proxy'
+
+// ThothChat roda em https:// — stream http:// direto e bloqueado pelo navegador (mixed
+// content), mesmo a radio funcionando normal em outros apps sem essa restricao. Em vez
+// de tirar essas radios da lista, repassa pelo nosso proxy (https) que busca o stream
+// http por baixo e devolve pro navegador como se fosse https.
+function toPlayableUrl(url: string): string {
+  if (url.toLowerCase().startsWith('http://')) {
+    return `${RADIO_PROXY}?url=${encodeURIComponent(url)}`
+  }
+  return url
 }
 
 async function fetchDiscoveryPool(): Promise<RadioStation[]> {
@@ -28,9 +35,7 @@ async function fetchDiscoveryPool(): Promise<RadioStation[]> {
         )
         if (!res.ok) return []
         const rows = (await res.json()) as RawStation[]
-        return rows
-          .map((r) => ({ name: r.name, url: r.url_resolved || r.url, country: cc }))
-          .filter((r) => isSecureStream(r.url))
+        return rows.map((r) => ({ name: r.name, url: toPlayableUrl(r.url_resolved || r.url), country: cc }))
       } catch {
         return []
       }
@@ -50,9 +55,7 @@ export async function searchPublicStations(query: string): Promise<RadioStation[
   const res = await fetch(`${RADIO_BROWSER_BASE}?limit=10&hidebroken=true&order=clickcount&reverse=true&name=${encodeURIComponent(query)}`)
   if (!res.ok) return []
   const rows = (await res.json()) as RawStation[]
-  return rows
-    .map((r) => ({ name: r.name, url: r.url_resolved || r.url, country: r.countrycode }))
-    .filter((r) => isSecureStream(r.url))
+  return rows.map((r) => ({ name: r.name, url: toPlayableUrl(r.url_resolved || r.url), country: r.countrycode }))
 }
 
 export function isHlsStream(url: string): boolean {
