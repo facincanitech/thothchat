@@ -5,6 +5,7 @@ import { sanitizeImageUrl } from '../lib/imageUrl'
 import { uploadImage } from '../lib/uploadImage'
 import { getErrorMessage } from '../lib/errors'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
+import { SettingsRow } from './SettingsRow'
 import { AvatarBox } from './AvatarBox'
 import { IconArrowLeft, IconEdit, IconPanelLeft, IconSend, IconSmile, IconTrash, IconUser } from './icons'
 import type { Community, Profile } from '../types'
@@ -67,7 +68,7 @@ function recordEvent(bufferRef: React.MutableRefObject<ReplayEvent[]>, text: str
   bufferRef.current = bufferRef.current.filter((e) => now - e.t <= REPLAY_WINDOW_MS)
 }
 
-export function CommunityView({ me, community, activeTab, onTabChange, onCommunityUpdate, onDeleted, onBack, sidebarCollapsed, onToggleSidebar }: Props) {
+export function CommunityView({ me, community, activeTab, onTabChange, onCommunityUpdate, onBack, sidebarCollapsed, onToggleSidebar }: Props) {
   const [posts, setPosts] = useState<Post[]>([])
   const [comments, setComments] = useState<Comment[]>([])
   const [reactions, setReactions] = useState<Reaction[]>([])
@@ -86,7 +87,6 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
   const [editImageUrl, setEditImageUrl] = useState('')
   const [imageUploading, setImageUploading] = useState(false)
   const [showMembers, setShowMembers] = useState(false)
-  const [confirmDeleteCommunity, setConfirmDeleteCommunity] = useState(false)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const [editCategory, setEditCategory] = useState('')
   const [editLanguage, setEditLanguage] = useState('')
@@ -189,7 +189,6 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
     setEditLanguage(community.language || '')
     setEditIsPrivate(community.is_private)
     setInfoError(null)
-    setConfirmDeleteCommunity(false)
   }, [community.id, community.name, community.image_url, community.category, community.language, community.is_private])
 
   function authorLabel(id: string): string {
@@ -257,16 +256,6 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
       onCommunityUpdate(patch)
     } catch (err) {
       setInfoError(getErrorMessage(err))
-    } finally {
-      setInfoBusy(false)
-    }
-  }
-
-  async function deleteCommunity() {
-    setInfoBusy(true)
-    try {
-      await supabase.from('communities').delete().eq('id', community.id)
-      onDeleted()
     } finally {
       setInfoBusy(false)
     }
@@ -633,8 +622,16 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
       )}
 
       {activeTab === 'info' && (
-        <section className="messages community-feed">
+        <section className="messages community-feed community-settings">
+          <div className="settings-community-identity">
+            <AvatarBox src={community.image_url} id={community.id} fallbackLetter={community.name[0] || 'C'} className="group-info-avatar" />
+            <h2>{community.name}</h2>
+            <p className="status">{community.is_private ? 'Comunidade particular' : 'Comunidade pública'} · {memberCount} membros</p>
+          </div>
+          <SettingsRow icon={<IconUser size={21} />} title="Membros da comunidade" detail={`${memberCount} participantes · ver e gerenciar`} onClick={() => setShowMembers(true)} />
           {isManager ? (
+            <details className="settings-disclosure">
+            <summary><IconEdit size={20} /> Detalhes da comunidade</summary>
             <div className="community-composer">
               <label>Nome</label>
               <input value={editName} onChange={(e) => setEditName(e.target.value)} />
@@ -658,7 +655,9 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
               <p className="status" style={{ margin: '4px 0 0' }}>
                 criada em {new Date(community.created_at).toLocaleDateString('pt-BR')}
               </p>
-              <div className="invite-link-box" style={{ marginTop: 8 }}>
+              <details className="settings-disclosure settings-invite">
+              <summary>Link de convite</summary>
+              <div className="invite-link-box">
                 {community.invite_code ? (
                   <>
                     <input type="text" readOnly value={inviteUrl(community.invite_code)} onClick={(e) => (e.target as HTMLInputElement).select()} />
@@ -676,24 +675,11 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
                   </button>
                 )}
               </div>
+              </details>
               <button type="button" disabled={infoBusy} onClick={saveCommunityInfo} style={{ marginTop: 8 }}>Salvar</button>
               {infoError && <span className="auth-error">{infoError}</span>}
-              {isOwner && !confirmDeleteCommunity && (
-                <button type="button" className="danger" disabled={infoBusy} onClick={() => setConfirmDeleteCommunity(true)} style={{ marginTop: 8 }}>
-                  Excluir comunidade
-                </button>
-              )}
-              {isOwner && confirmDeleteCommunity && (
-                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <button type="button" className="danger" disabled={infoBusy} onClick={deleteCommunity}>
-                    Confirmar exclusão
-                  </button>
-                  <button type="button" disabled={infoBusy} onClick={() => setConfirmDeleteCommunity(false)}>
-                    cancelar
-                  </button>
-                </div>
-              )}
             </div>
+            </details>
           ) : (
             <div className="community-post">
               {community.description && <p className="community-post-content">{community.description}</p>}
@@ -705,9 +691,7 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
             </div>
           )}
 
-          <button type="button" onClick={() => setShowMembers(true)} style={{ alignSelf: 'flex-start' }}>
-            Membros ({memberCount})
-          </button>
+
         </section>
       )}
 
