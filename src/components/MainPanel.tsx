@@ -2969,6 +2969,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       {sonorCardOpen && sonorSession && (
         <div className="modal-backdrop" onClick={() => setSonorCardOpen(false)}>
           <div className="modal-card sonor-card" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="icon-btn sonor-card-back" onClick={() => setSonorCardOpen(false)}>
+              <IconArrowLeft size={20} />
+            </button>
             <h3>{sonorSession.title}</h3>
             {sonorNowPlaying ? (
               <p className="sonor-card-song">{sonorNowPlaying}</p>

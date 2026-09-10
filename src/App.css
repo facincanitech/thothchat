@@ -328,7 +328,8 @@ body{
 }
 .sonor-picker-country{font-size:11px;color:var(--muted);flex-shrink:0}
 @media(hover:hover){.sonor-picker-option:hover{background:var(--bg-selected)}}
-.sonor-card{display:flex;flex-direction:column;gap:12px;max-width:320px;text-align:center}
+.sonor-card{position:relative;display:flex;flex-direction:column;gap:12px;max-width:320px;text-align:center;padding-top:36px}
+.sonor-card-back{position:absolute;top:0;left:0}
 .sonor-card h3{margin:0;font-size:16px}
 .sonor-card-song{margin:0;font-size:14px;color:var(--text-secondary)}
 .sonor-card-song-empty{font-style:italic;color:var(--muted)}
