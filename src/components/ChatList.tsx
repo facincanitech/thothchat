@@ -16,6 +16,7 @@ import {
   IconArchive,
   IconArrowLeft,
   IconBellOff,
+  IconChevronDown,
   IconEdit,
   IconGrip,
   IconPaint,
@@ -310,6 +311,8 @@ export function ChatList({
   const [dragKey, setDragKey] = useState<FilterKey | null>(null)
   const draggedKeyRef = useRef<FilterKey | null>(null)
   const filtersRef = useRef<HTMLDivElement>(null)
+  const [filterPopupOpen, setFilterPopupOpen] = useState(false)
+  const VISIBLE_FILTER_COUNT = 3
 
   useEffect(() => {
     try {
@@ -327,11 +330,12 @@ export function ChatList({
       const dragged = draggedKeyRef.current
       if (!dragged) return
       const x = e.clientX
+      const y = e.clientY
       const buttons = Array.from(container.querySelectorAll<HTMLElement>('[data-filter-key]'))
       let target: FilterKey | null = null
       for (const el of buttons) {
         const rect = el.getBoundingClientRect()
-        if (x >= rect.left && x <= rect.right) {
+        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
           target = el.dataset.filterKey as FilterKey
           break
         }
@@ -1580,27 +1584,73 @@ export function ChatList({
             </div>
           </div>
 
-          <div className="filters" ref={filtersRef}>
-            {filterOrder.map((key) => (
-              <div
-                key={key}
-                data-filter-key={key}
-                className={`filter-tab${dragKey === key ? ' dragging' : ''}${activeFilter === key ? ' active' : ''}`}
-              >
-                <span
-                  className="filter-grip"
-                  onPointerDown={(e) => {
-                    e.preventDefault()
-                    if (filtersRef.current) startFilterDrag(key, filtersRef.current)
-                  }}
+          <div className="filters-wrap" ref={filtersRef}>
+            <div className="filters">
+              {filterOrder.slice(0, VISIBLE_FILTER_COUNT).map((key) => (
+                <div
+                  key={key}
+                  data-filter-key={key}
+                  className={`filter-tab${dragKey === key ? ' dragging' : ''}${activeFilter === key ? ' active' : ''}`}
                 >
-                  <IconGrip size={12} />
-                </span>
-                <button className="filter" aria-pressed={activeFilter === key} onClick={() => setActiveFilter(key)}>
-                  {FILTER_LABELS[key]}
+                  <span
+                    className="filter-grip"
+                    onPointerDown={(e) => {
+                      e.preventDefault()
+                      if (filtersRef.current) startFilterDrag(key, filtersRef.current)
+                    }}
+                  >
+                    <IconGrip size={12} />
+                  </span>
+                  <button className="filter" aria-pressed={activeFilter === key} onClick={() => setActiveFilter(key)}>
+                    {FILTER_LABELS[key]}
+                  </button>
+                </div>
+              ))}
+              {filterOrder.length > VISIBLE_FILTER_COUNT && (
+                <button
+                  type="button"
+                  className={`filter-more-btn${filterOrder.slice(VISIBLE_FILTER_COUNT).includes(activeFilter) ? ' active' : ''}`}
+                  onClick={() => setFilterPopupOpen((v) => !v)}
+                  title="Mais categorias"
+                >
+                  <IconChevronDown size={14} />
                 </button>
-              </div>
-            ))}
+              )}
+            </div>
+            {filterPopupOpen && (
+              <>
+                <div className="filter-popup-backdrop" onClick={() => setFilterPopupOpen(false)} />
+                <div className="filter-popup">
+                  {filterOrder.slice(VISIBLE_FILTER_COUNT).map((key) => (
+                    <div
+                      key={key}
+                      data-filter-key={key}
+                      className={`filter-tab filter-tab-popup${dragKey === key ? ' dragging' : ''}${activeFilter === key ? ' active' : ''}`}
+                    >
+                      <span
+                        className="filter-grip"
+                        onPointerDown={(e) => {
+                          e.preventDefault()
+                          if (filtersRef.current) startFilterDrag(key, filtersRef.current)
+                        }}
+                      >
+                        <IconGrip size={12} />
+                      </span>
+                      <button
+                        className="filter"
+                        aria-pressed={activeFilter === key}
+                        onClick={() => {
+                          setActiveFilter(key)
+                          setFilterPopupOpen(false)
+                        }}
+                      >
+                        {FILTER_LABELS[key]}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           {activeFilter === 'group' ? (
