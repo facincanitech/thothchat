@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Capacitor } from '@capacitor/core'
 import { IconBell } from './icons'
 import { checkForUpdate } from '../lib/updateCheck'
 import { downloadAndInstallUpdate } from '../lib/appUpdate'
@@ -45,6 +46,7 @@ export function NotificationCenter({ onOpenAppearance, onOpenStatus, onOpenCommu
   }, [])
 
   function recheckUpdate() {
+    if (!Capacitor.isNativePlatform()) return
     checkForUpdate(APP_VERSION).then((info) => {
       setUpdateVersion(info.available ? info.version || null : null)
     })
