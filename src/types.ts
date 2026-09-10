@@ -43,7 +43,7 @@ export type Message = {
   author_id: string
   content: string
   created_at: string
-  kind: 'text' | 'system' | 'ephemeral' | 'contact' | 'sticker' | 'gif'
+  kind: 'text' | 'system' | 'ephemeral' | 'contact' | 'sticker' | 'gif' | 'sonor_picker'
   reply_to_id: string | null
 }
 

@@ -360,6 +360,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const sonorAudioRef = useRef<HTMLAudioElement>(null)
   const sonorHlsRef = useRef<any>(null)
   const sonorRetryCountRef = useRef(0)
+  const sonorPrevUrlRef = useRef<string | null | undefined>(undefined)
 
   const botsById = useMemo(() => {
     const map: Record<string, { username: string; display_name: string | null }> = {}
@@ -722,9 +723,17 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     if (!sonorSession) {
       audio.pause()
       audio.removeAttribute('src')
+      sonorPrevUrlRef.current = null
       return
     }
     setSonorAudioError(null)
+    // uma rádio nova de verdade (nao o carregamento inicial ao abrir o chat) reseta a
+    // preferencia de escutar de todo mundo no banco (sonor_set_session) - o cliente
+    // precisa acompanhar isso, senao quem tinha mutado a radio ANTERIOR fica mudo pra sempre
+    if (sonorPrevUrlRef.current !== undefined && sonorPrevUrlRef.current !== sonorSession.stream_url) {
+      setSonorListening(true)
+    }
+    sonorPrevUrlRef.current = sonorSession.stream_url
     sonorRetryCountRef.current = 0
     if (sonorSession.is_hls) {
       import('hls.js').then(({ default: Hls }) => {
@@ -1061,9 +1070,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     return installedBots.find((b) => b.slug === slug) || null
   }
 
-  async function postBotReply(botId: string, content: string) {
+  async function postBotReply(botId: string, content: string, kind: string = 'text') {
     if (!conversation) return
-    await supabase.rpc('post_bot_message', { p_conversation_id: conversation.id, p_bot_id: botId, p_content: content, p_kind: 'text' })
+    await supabase.rpc('post_bot_message', { p_conversation_id: conversation.id, p_bot_id: botId, p_content: content, p_kind: kind })
   }
 
   async function loadCatalogBots() {
@@ -1115,6 +1124,20 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     }
   }
 
+  async function playSonorStation(botId: string, name: string, url: string, isHls: boolean) {
+    if (!conversation) return
+    await supabase.rpc('sonor_set_session', {
+      p_conversation_id: conversation.id, p_title: name, p_stream_url: url, p_is_hls: isHls,
+    })
+    await postBotReply(botId, `tocando: ${name}`)
+  }
+
+  async function chooseSonorStation(option: { name: string; url: string; country: string; is_hls: boolean }) {
+    const bot = findInstalledBot('sonor')
+    if (!bot) return
+    await playSonorStation(bot.id, option.name, option.url, option.is_hls)
+  }
+
   async function handleSonorCommand(rawArgs: string) {
     if (!conversation) return
     const bot = findInstalledBot('sonor')
@@ -1147,35 +1170,39 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     }
 
     if (subLower === 'radio') {
-      let chosen: { name: string; url: string; is_hls: boolean } | null = null
-
       if (!query || query === 'aleatoria') {
         const random = await fetchRandomStation()
-        if (random) chosen = { name: random.name, url: random.url, is_hls: isHlsStream(random.url) }
-      } else {
-        const { data: favRows } = await supabase
-          .from('sonor_favorites')
-          .select('name, stream_url, is_hls')
-          .eq('user_id', me?.id)
-          .ilike('name', `%${query}%`)
-          .limit(1)
-        if (favRows && favRows[0]) {
-          chosen = { name: favRows[0].name, url: favRows[0].stream_url, is_hls: favRows[0].is_hls }
-        } else {
-          const found = await searchPublicStations(query)
-          if (found[0]) chosen = { name: found[0].name, url: found[0].url, is_hls: isHlsStream(found[0].url) }
+        if (!random) {
+          await postBotReply(bot.id, 'não consegui achar nenhuma rádio agora')
+          return
         }
-      }
-
-      if (!chosen || !chosen.url) {
-        await postBotReply(bot.id, query ? `não achei "${query}"` : 'não consegui achar nenhuma rádio agora')
+        await playSonorStation(bot.id, random.name, random.url, isHlsStream(random.url))
         return
       }
 
-      await supabase.rpc('sonor_set_session', {
-        p_conversation_id: conversation.id, p_title: chosen.name, p_stream_url: chosen.url, p_is_hls: chosen.is_hls,
-      })
-      await postBotReply(bot.id, `tocando: ${chosen.name}`)
+      const { data: favRows } = await supabase
+        .from('sonor_favorites')
+        .select('name, stream_url, is_hls')
+        .eq('user_id', me?.id)
+        .ilike('name', `%${query}%`)
+        .limit(1)
+      if (favRows && favRows[0]) {
+        await playSonorStation(bot.id, favRows[0].name, favRows[0].stream_url, favRows[0].is_hls)
+        return
+      }
+
+      const found = await searchPublicStations(query)
+      if (found.length === 0) {
+        await postBotReply(bot.id, `não achei "${query}"`)
+        return
+      }
+      if (found.length === 1) {
+        await playSonorStation(bot.id, found[0].name, found[0].url, isHlsStream(found[0].url))
+        return
+      }
+
+      const options = found.slice(0, 5).map((s) => ({ name: s.name, url: s.url, country: s.country, is_hls: isHlsStream(s.url) }))
+      await postBotReply(bot.id, JSON.stringify({ query, options }), 'sonor_picker')
       return
     }
 
@@ -2307,6 +2334,33 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                           <strong>{card.name}</strong>
                           <span>{card.email}</span>
                         </div>
+                      </div>
+                    )
+                  })()}
+                  <div className="message-footer">
+                    <span className="meta">{formatMessageTime(m.created_at)}</span>
+                  </div>
+                </div>
+              </div>
+            ) : m.kind === 'sonor_picker' ? (
+              <div className={`message ${m.author_id === me.id ? 'out' : 'in'}`}>
+                <div className="bubble">
+                  {(() => {
+                    let payload: { query: string; options: { name: string; url: string; country: string; is_hls: boolean }[] } | null = null
+                    try {
+                      payload = JSON.parse(m.content)
+                    } catch {
+                      payload = null
+                    }
+                    if (!payload) return <span>{m.content}</span>
+                    return (
+                      <div className="sonor-picker">
+                        <span className="sonor-picker-title">achei mais de uma "{payload.query}", qual?</span>
+                        {payload.options.map((opt, i) => (
+                          <button key={i} type="button" className="sonor-picker-option" onClick={() => chooseSonorStation(opt)}>
+                            {opt.name} <span className="sonor-picker-country">{opt.country}</span>
+                          </button>
+                        ))}
                       </div>
                     )
                   })()}
