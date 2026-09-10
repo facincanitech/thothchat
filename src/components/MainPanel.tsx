@@ -1231,16 +1231,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     await supabase.from('sonor_listeners').upsert({ conversation_id: conversation.id, user_id: me.id, listening: next })
   }
 
-  async function handleSonorAudioError() {
-    if (!conversation || !me || !sonorSession) return
-    if (sonorSession.started_by !== me.id) return
-    if (sonorRetryCountRef.current >= 2) return
-    sonorRetryCountRef.current += 1
-    const random = await fetchRandomStation()
-    if (!random) return
-    await supabase.rpc('sonor_set_session', {
-      p_conversation_id: conversation.id, p_title: random.name, p_stream_url: random.url, p_is_hls: isHlsStream(random.url),
-    })
+  function handleSonorAudioError() {
+    setSonorAudioError('não consegui tocar essa rádio — tenta de novo ou escolhe outra')
   }
 
   async function loadInviteFriends() {
