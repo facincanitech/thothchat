@@ -211,10 +211,10 @@ body{
 .presence-dot.offline{background:#e5484d}
 .header-text{min-width:0;flex:1}
 .header-name{font-weight:650;font-size:16px;display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;line-height:1.5}
-.header-sonor{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-top:1px}
+.header-sonor{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--text-secondary);margin-top:2px}
 .header-sonor span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.header-sonor .icon-btn{width:22px;height:22px;flex-shrink:0}
-.header-sonor-volume{width:60px;flex-shrink:0;height:14px;accent-color:var(--green);cursor:pointer}
+.header-sonor .icon-btn{width:34px;height:34px;flex-shrink:0}
+.header-sonor-volume{width:70px;flex-shrink:0;height:16px;accent-color:var(--green);cursor:pointer}
 .header-name .styled-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .nudge-indicator{
   display:inline-flex;align-items:center;gap:4px;color:var(--green);font-size:12px;

@@ -1958,7 +1958,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                 onClick={(e) => e.stopPropagation()}
               />
               <button type="button" className="icon-btn" title={sonorListening ? 'Silenciar Sonor' : 'Ouvir Sonor'} onClick={toggleSonorListening}>
-                {sonorListening ? <IconVolume size={16} /> : <IconVolumeOff size={16} />}
+                {sonorListening ? <IconVolume size={22} /> : <IconVolumeOff size={22} />}
               </button>
             </div>
           )}
