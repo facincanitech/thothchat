@@ -1787,10 +1787,12 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       await supabase.from('message_replays').insert({ message_id: msg.id, events: eventsToStore })
     }
 
-    const recipientIds = Object.keys(members).filter((id) => id !== me.id)
-    sendPush(recipientIds, displayName(me), content, conversation.id)
-
-    if (content.startsWith('/')) handleBotCommand(content)
+    if (content.startsWith('/')) {
+      handleBotCommand(content)
+    } else {
+      const recipientIds = Object.keys(members).filter((id) => id !== me.id)
+      sendPush(recipientIds, displayName(me), content, conversation.id)
+    }
   }
 
 
@@ -1985,7 +1987,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                 onClick={(e) => e.stopPropagation()}
               />
               <button type="button" className="icon-btn" title={sonorListening ? 'Silenciar Sonor' : 'Ouvir Sonor'} onClick={toggleSonorListening}>
-                {sonorListening ? <IconVolume size={22} /> : <IconVolumeOff size={22} />}
+                {sonorListening ? <IconVolume size={28} /> : <IconVolumeOff size={28} />}
               </button>
             </div>
           )}
