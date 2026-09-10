@@ -12,6 +12,12 @@ type RawStation = { name: string; url: string; url_resolved?: string; countrycod
 
 let discoveryPoolCache: RadioStation[] | null = null
 
+function isSecureStream(url: string): boolean {
+  // ThothChat roda em https:// — stream http:// e bloqueado pelo navegador (mixed content),
+  // mesmo que a radio funcione normal em outros apps que nao tem essa restricao.
+  return url.toLowerCase().startsWith('https://')
+}
+
 async function fetchDiscoveryPool(): Promise<RadioStation[]> {
   if (discoveryPoolCache) return discoveryPoolCache
   const results = await Promise.all(
@@ -22,7 +28,9 @@ async function fetchDiscoveryPool(): Promise<RadioStation[]> {
         )
         if (!res.ok) return []
         const rows = (await res.json()) as RawStation[]
-        return rows.map((r) => ({ name: r.name, url: r.url_resolved || r.url, country: cc }))
+        return rows
+          .map((r) => ({ name: r.name, url: r.url_resolved || r.url, country: cc }))
+          .filter((r) => isSecureStream(r.url))
       } catch {
         return []
       }
@@ -42,7 +50,9 @@ export async function searchPublicStations(query: string): Promise<RadioStation[
   const res = await fetch(`${RADIO_BROWSER_BASE}?limit=10&hidebroken=true&order=clickcount&reverse=true&name=${encodeURIComponent(query)}`)
   if (!res.ok) return []
   const rows = (await res.json()) as RawStation[]
-  return rows.map((r) => ({ name: r.name, url: r.url_resolved || r.url, country: r.countrycode }))
+  return rows
+    .map((r) => ({ name: r.name, url: r.url_resolved || r.url, country: r.countrycode }))
+    .filter((r) => isSecureStream(r.url))
 }
 
 export function isHlsStream(url: string): boolean {
