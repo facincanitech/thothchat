@@ -360,6 +360,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const sonorAudioRef = useRef<HTMLAudioElement>(null)
   const sonorHlsRef = useRef<any>(null)
   const sonorRetryCountRef = useRef(0)
+  const sonorReconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [sonorReconnecting, setSonorReconnecting] = useState(false)
   const sonorPrevUrlRef = useRef<string | null | undefined>(undefined)
   const [sonorCardOpen, setSonorCardOpen] = useState(false)
   const [sonorSavingSong, setSonorSavingSong] = useState(false)
@@ -723,6 +725,11 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       sonorHlsRef.current.destroy()
       sonorHlsRef.current = null
     }
+    if (sonorReconnectTimeoutRef.current) {
+      clearTimeout(sonorReconnectTimeoutRef.current)
+      sonorReconnectTimeoutRef.current = null
+    }
+    setSonorReconnecting(false)
     if (!sonorSession) {
       audio.pause()
       audio.removeAttribute('src')
@@ -745,7 +752,11 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           hls.loadSource(sonorSession.stream_url)
           hls.attachMedia(audio)
           hls.on(Hls.Events.ERROR, (_evt: unknown, data: { fatal?: boolean }) => {
-            if (data.fatal) setSonorAudioError('não consegui tocar essa rádio (formato HLS)')
+            if (data.fatal) scheduleSonorReconnect('não consegui tocar essa rádio (formato HLS)')
+          })
+          hls.on(Hls.Events.FRAG_LOADED, () => {
+            sonorRetryCountRef.current = 0
+            setSonorReconnecting(false)
           })
           sonorHlsRef.current = hls
         } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
@@ -1279,8 +1290,42 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     await supabase.from('sonor_listeners').upsert({ conversation_id: conversation.id, user_id: me.id, listening: next })
   }
 
+  const SONOR_MAX_RETRIES = 6
+
+  function scheduleSonorReconnect(finalErrorMessage: string) {
+    if (sonorReconnectTimeoutRef.current) return
+    const attempt = sonorRetryCountRef.current
+    if (attempt >= SONOR_MAX_RETRIES) {
+      setSonorReconnecting(false)
+      setSonorAudioError(finalErrorMessage)
+      return
+    }
+    sonorRetryCountRef.current = attempt + 1
+    setSonorReconnecting(true)
+    const delay = Math.min(2000 * (attempt + 1), 15000)
+    sonorReconnectTimeoutRef.current = setTimeout(() => {
+      sonorReconnectTimeoutRef.current = null
+      const audio = sonorAudioRef.current
+      const session = sonorSession
+      if (!audio || !session) return
+      if (session.is_hls && sonorHlsRef.current) {
+        sonorHlsRef.current.loadSource(session.stream_url)
+        sonorHlsRef.current.attachMedia(audio)
+      } else {
+        audio.src = session.stream_url
+        if (sonorListening) audio.play().catch(() => {})
+      }
+    }, delay)
+  }
+
   function handleSonorAudioError() {
-    setSonorAudioError('não consegui tocar essa rádio — tenta de novo ou escolhe outra')
+    if (sonorSession?.is_hls) return
+    scheduleSonorReconnect('não consegui tocar essa rádio — tenta de novo ou escolhe outra')
+  }
+
+  function handleSonorAudioPlaying() {
+    sonorRetryCountRef.current = 0
+    setSonorReconnecting(false)
   }
 
   async function loadInviteFriends() {
@@ -2000,7 +2045,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                   setSonorCardOpen(true)
                 }}
               >
-                {sonorAudioError || shortRadioName(sonorSession.title)}
+                {sonorAudioError || (sonorReconnecting ? 'reconectando…' : shortRadioName(sonorSession.title))}
                 {!sonorAudioError && sonorNowPlaying ? ` · ${sonorNowPlaying}` : ''}
               </span>
               <input
@@ -2375,6 +2420,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             ) : m.kind === 'sonor_picker' ? (
               <div className={`message ${m.author_id === me.id ? 'out' : 'in'}`}>
                 <div className="bubble">
+                  {m.author_id !== me.id && (conversation.type === 'group' || botsById[m.author_id]) && (
+                    <span className="author-label">{authorLabel(m.author_id) || '...'}</span>
+                  )}
                   {(() => {
                     let payload: { query: string; options: { name: string; url: string; country: string; is_hls: boolean }[] } | null = null
                     try {
@@ -2402,7 +2450,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             ) : m.kind === 'sticker' || m.kind === 'gif' ? (
               <div className={`message ${m.author_id === me.id ? 'out' : 'in'}`}>
                 <div className="sticker-message">
-                  {m.author_id !== me.id && conversation.type === 'group' && (
+                  {m.author_id !== me.id && (conversation.type === 'group' || botsById[m.author_id]) && (
                     <span
                       className="author-label"
                       style={{ cursor: members[m.author_id] ? 'pointer' : 'default' }}
@@ -2418,7 +2466,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             ) : m.kind === 'ephemeral' ? (
               <div className={`message ${m.author_id === me.id ? 'out' : 'in'}`}>
                 <div className="bubble">
-                  {m.author_id !== me.id && conversation.type === 'group' && (
+                  {m.author_id !== me.id && (conversation.type === 'group' || botsById[m.author_id]) && (
                     <span
                       className="author-label"
                       style={{ cursor: members[m.author_id] ? 'pointer' : 'default' }}
@@ -2518,7 +2566,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                 style={dragMsgId === m.id ? { transform: `translateX(${dragX}px)` } : undefined}
               >
                 <div className="bubble">
-                  {m.author_id !== me.id && conversation.type === 'group' && (
+                  {m.author_id !== me.id && (conversation.type === 'group' || botsById[m.author_id]) && (
                     <span
                       className="author-label"
                       style={{ cursor: members[m.author_id] ? 'pointer' : 'default' }}
@@ -2539,6 +2587,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                     )
                   })()}
                   {m.content}
+                  <button type="button" className="msg-reply-btn" title="Responder" onClick={() => setReplyTarget(m)}>
+                    <IconChevronDown size={14} /> responder
+                  </button>
                   <div className="message-footer">
                     <button type="button" className="replay-btn" onClick={() => openReplay(m)}>
                       replay{editedIds.has(m.id) && <span className="replay-edited" title="tem coisa diferente do texto final">!</span>}
@@ -2598,7 +2649,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           <input ref={mediaInputRef} type="file" accept="image/*,video/*" hidden onChange={handleAttachFilePicked} />
           <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" hidden onChange={handleAttachFilePicked} />
           <input ref={audioInputRef} type="file" accept="audio/*" hidden onChange={handleAttachFilePicked} />
-          <audio ref={sonorAudioRef} hidden onError={handleSonorAudioError} />
+          <audio ref={sonorAudioRef} hidden onError={handleSonorAudioError} onPlaying={handleSonorAudioPlaying} />
         </div>
         <div className="composer-input-row">
           <div className="input">

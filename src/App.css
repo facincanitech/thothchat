@@ -274,6 +274,14 @@ body{
 .in .bubble{background:var(--in-custom,var(--bg-surface));color:var(--on-in,var(--text-base));border-bottom-left-radius:5px}
 .out .bubble{background:var(--out-custom,var(--bubble));color:var(--on-out,var(--text-base));border-bottom-right-radius:5px;text-align:left}
 .message-footer{display:flex;justify-content:flex-end;align-items:center;margin-top:4px;gap:8px}
+.msg-reply-btn{
+  position:absolute;top:-10px;display:none;align-items:center;gap:2px;font-size:11px;
+  color:var(--muted);background:var(--bg-panel);border:1px solid var(--line-2);border-radius:10px;
+  padding:2px 8px;cursor:pointer;z-index:2;
+}
+.message.in .msg-reply-btn{left:8px}
+.message.out .msg-reply-btn{right:8px}
+@media(hover:hover){.message:hover .msg-reply-btn{display:flex}}
 .meta{color:inherit;opacity:.65;font-size:10px;white-space:nowrap}
 .author-label{font-size:11px;color:var(--muted);margin-bottom:2px;display:block}
 .bubble .author-label{color:inherit;opacity:.72;font-weight:600}
