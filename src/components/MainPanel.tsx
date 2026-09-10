@@ -33,7 +33,7 @@ import { ProfilePopup } from './ProfilePopup'
 import type { Bot, Community, Conversation, Message, Profile, SonorSession } from '../types'
 import { generateInviteCode, inviteUrl } from '../lib/inviteLink'
 import { parseCommand, rollDice, pickRandom } from '../lib/bots'
-import { fetchRandomStation, searchPublicStations, isHlsStream, fetchNowPlaying, shortRadioName } from '../lib/sonor'
+import { fetchRandomStation, searchPublicStations, isHlsStream, fetchNowPlaying, shortRadioName, youtubeSearchUrl } from '../lib/sonor'
 
 const EMOJIS = [
   '😀', '😁', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😍',
@@ -361,6 +361,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const sonorHlsRef = useRef<any>(null)
   const sonorRetryCountRef = useRef(0)
   const sonorPrevUrlRef = useRef<string | null | undefined>(undefined)
+  const [sonorCardOpen, setSonorCardOpen] = useState(false)
+  const [sonorSavingSong, setSonorSavingSong] = useState(false)
+  const [sonorSongSaved, setSonorSongSaved] = useState(false)
 
   const botsById = useMemo(() => {
     const map: Record<string, { username: string; display_name: string | null }> = {}
@@ -796,6 +799,10 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   }, [sonorSession?.stream_url])
 
   useEffect(() => {
+    setSonorSongSaved(false)
+  }, [sonorNowPlaying, sonorSession?.stream_url])
+
+  useEffect(() => {
     if (atBottom) bottomRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' })
   }, [messages, liveTyping, atBottom])
 
@@ -1130,6 +1137,20 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       p_conversation_id: conversation.id, p_title: name, p_stream_url: url, p_is_hls: isHls,
     })
     await postBotReply(botId, `tocando: ${name}`)
+  }
+
+  async function saveSonorSong() {
+    if (!me || !sonorNowPlaying) return
+    setSonorSavingSong(true)
+    const { error } = await supabase.from('sonor_song_favorites').insert({
+      user_id: me.id, title: sonorNowPlaying, youtube_url: youtubeSearchUrl(sonorNowPlaying),
+    })
+    setSonorSavingSong(false)
+    if (!error) {
+      setSonorSongSaved(true)
+      const bot = findInstalledBot('sonor')
+      if (bot) await postBotReply(bot.id, `salvei "${sonorNowPlaying}" nas suas músicas favoritas`)
+    }
   }
 
   async function chooseSonorStation(option: { name: string; url: string; country: string; is_hls: boolean }) {
@@ -1971,7 +1992,14 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           </div>
           {sonorSession && (
             <div className="header-sonor">
-              <span title={sonorSession.title}>
+              <span
+                title={sonorSession.title}
+                style={{ cursor: 'pointer' }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setSonorCardOpen(true)
+                }}
+              >
                 {sonorAudioError || shortRadioName(sonorSession.title)}
                 {!sonorAudioError && sonorNowPlaying ? ` · ${sonorNowPlaying}` : ''}
               </span>
@@ -2936,6 +2964,37 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               : undefined
           }
         />
+      )}
+
+      {sonorCardOpen && sonorSession && (
+        <div className="modal-backdrop" onClick={() => setSonorCardOpen(false)}>
+          <div className="modal-card sonor-card" onClick={(e) => e.stopPropagation()}>
+            <h3>{sonorSession.title}</h3>
+            {sonorNowPlaying ? (
+              <p className="sonor-card-song">{sonorNowPlaying}</p>
+            ) : (
+              <p className="sonor-card-song sonor-card-song-empty">nome da música não disponível nessa rádio</p>
+            )}
+            <a
+              className="google-btn"
+              href={youtubeSearchUrl(sonorNowPlaying || sonorSession.title)}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {sonorNowPlaying ? 'Buscar música no YouTube' : 'Buscar rádio no YouTube'}
+            </a>
+            <div className="sonor-card-actions">
+              <button type="button" className="google-btn" onClick={() => handleSonorCommand('salvar')}>
+                Salvar rádio
+              </button>
+              {sonorNowPlaying && (
+                <button type="button" className="google-btn" disabled={sonorSavingSong || sonorSongSaved} onClick={saveSonorSong}>
+                  {sonorSongSaved ? 'Música salva' : sonorSavingSong ? 'Salvando…' : 'Salvar música'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </main>
   )

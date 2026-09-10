@@ -79,6 +79,10 @@ export async function fetchNowPlaying(streamUrl: string): Promise<string | null>
   }
 }
 
+export function youtubeSearchUrl(query: string): string {
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`
+}
+
 export function shortRadioName(name: string): string {
   const stopIdx = name.search(/[¡!\-|:·,]/)
   let base = stopIdx > 1 ? name.slice(0, stopIdx).trim() : name.trim()
