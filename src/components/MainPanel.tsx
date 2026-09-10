@@ -1201,6 +1201,26 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       return
     }
 
+    if (subLower === 'favoritas' || subLower === 'salvas') {
+      const { data: favRows } = await supabase
+        .from('sonor_favorites')
+        .select('name, stream_url, is_hls')
+        .eq('user_id', me?.id)
+        .order('created_at', { ascending: false })
+        .limit(5)
+      if (!favRows || favRows.length === 0) {
+        await postBotReply(bot.id, 'você ainda não salvou nenhuma rádio — usa /sonor salvar enquanto uma tá tocando')
+        return
+      }
+      if (favRows.length === 1) {
+        await playSonorStation(bot.id, favRows[0].name, favRows[0].stream_url, favRows[0].is_hls)
+        return
+      }
+      const options = favRows.map((f) => ({ name: f.name, url: f.stream_url, country: '', is_hls: f.is_hls }))
+      await postBotReply(bot.id, JSON.stringify({ query: '', title: 'suas rádios salvas, qual toca?', options }), 'sonor_picker')
+      return
+    }
+
     if (subLower === 'radio') {
       if (!query || query === 'aleatoria') {
         const random = await fetchRandomStation()
@@ -1238,7 +1258,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
       return
     }
 
-    await postBotReply(bot.id, 'comandos: /sonor radio "nome", /sonor radio aleatoria, /sonor salvar, /sonor parar')
+    await postBotReply(bot.id, 'comandos: /sonor radio "nome", /sonor radio aleatoria, /sonor salvar, /sonor favoritas, /sonor parar')
   }
 
   async function handleBotCommand(text: string) {
@@ -2424,7 +2444,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                     <span className="author-label">{authorLabel(m.author_id) || '...'}</span>
                   )}
                   {(() => {
-                    let payload: { query: string; options: { name: string; url: string; country: string; is_hls: boolean }[] } | null = null
+                    let payload: { query: string; title?: string; options: { name: string; url: string; country: string; is_hls: boolean }[] } | null = null
                     try {
                       payload = JSON.parse(m.content)
                     } catch {
@@ -2433,10 +2453,10 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                     if (!payload) return <span>{m.content}</span>
                     return (
                       <div className="sonor-picker">
-                        <span className="sonor-picker-title">achei mais de uma "{payload.query}", qual?</span>
+                        <span className="sonor-picker-title">{payload.title || `achei mais de uma "${payload.query}", qual?`}</span>
                         {payload.options.map((opt, i) => (
                           <button key={i} type="button" className="sonor-picker-option" onClick={() => chooseSonorStation(opt)}>
-                            {opt.name} <span className="sonor-picker-country">{opt.country}</span>
+                            {opt.name} {opt.country && <span className="sonor-picker-country">{opt.country}</span>}
                           </button>
                         ))}
                       </div>
