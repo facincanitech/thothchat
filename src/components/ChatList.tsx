@@ -474,6 +474,9 @@ export function ChatList({
   const [accountSaving, setAccountSaving] = useState(false)
   const [accountError, setAccountError] = useState<string | null>(null)
   const [confirmSignOut, setConfirmSignOut] = useState(false)
+  const [confirmDeleteAccount, setConfirmDeleteAccount] = useState(false)
+  const [deletingAccount, setDeletingAccount] = useState(false)
+  const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null)
   const [blocked, setBlocked] = useState<BlockedUser[]>([])
   const [avatarUploading, setAvatarUploading] = useState(false)
   const avatarInputRef = useRef<HTMLInputElement>(null)
@@ -1423,6 +1426,29 @@ export function ChatList({
     onAccountOpenChange(false)
   }
 
+  async function deleteAccount() {
+    setDeletingAccount(true)
+    setDeleteAccountError(null)
+    try {
+      await supabase.auth.refreshSession()
+      const { data: sessionData } = await supabase.auth.getSession()
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-account`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${sessionData.session?.access_token}`,
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+      })
+      const body = await res.json()
+      if (!res.ok) throw new Error(body.error || 'Falha ao excluir conta')
+      await supabase.auth.signOut()
+    } catch (err) {
+      setDeleteAccountError(err instanceof Error ? err.message : 'Falha ao excluir conta')
+      setDeletingAccount(false)
+    }
+  }
+
   function accountGoBack() {
     if (accountView === 'blocked' || accountView === 'terms') setAccountView('privacy')
     else if (accountView === 'root') onAccountOpenChange(false)
@@ -2213,6 +2239,27 @@ export function ChatList({
               ) : (
                 <button type="button" className="account-signout" onClick={() => setConfirmSignOut(true)}>
                   Sair
+                </button>
+              )}
+            </div>
+
+            <div style={{ marginTop: 16 }}>
+              {confirmDeleteAccount ? (
+                <>
+                  <span className="invite-code">
+                    Excluir sua conta é definitivo — seu perfil vira "Conta excluída" e você não consegue mais entrar. Mensagens que você mandou continuam visíveis pros outros, sem seu nome/foto.
+                  </span>
+                  {deleteAccountError && <span className="invite-code" style={{ color: '#e5484d' }}>{deleteAccountError}</span>}
+                  <button type="button" className="settings-danger-btn" disabled={deletingAccount} onClick={deleteAccount} style={{ marginTop: 8 }}>
+                    {deletingAccount ? 'Excluindo...' : 'Sim, excluir minha conta'}
+                  </button>
+                  <button type="button" disabled={deletingAccount} onClick={() => setConfirmDeleteAccount(false)} style={{ marginTop: 6 }}>
+                    Cancelar
+                  </button>
+                </>
+              ) : (
+                <button type="button" className="settings-danger-btn" onClick={() => setConfirmDeleteAccount(true)}>
+                  Excluir conta
                 </button>
               )}
             </div>
