@@ -31,9 +31,12 @@ type ListPerson = { id: string; username: string; display_name: string | null; a
 type View = 'profile' | 'friends' | 'communities'
 
 type ConversationActions = {
+  groupLabel?: string
+  memberCount: number
   canInvite: boolean
   canManageBots: boolean
   installedBotNames: string[]
+  onOpenMembers: () => void
   onOpenInvite: () => void
   onOpenBots: () => void
 }
@@ -233,8 +236,20 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
               )
             )}
 
+            {isRoot && conversationActions?.groupLabel && (
+              <p style={{ fontSize: '.75rem', color: '#8696a0' }}>{conversationActions.groupLabel}</p>
+            )}
+
             {isRoot && conversationActions && (
               <div className="settings-sections" style={{ width: '100%', marginTop: 14, textAlign: 'left' }}>
+                {conversationActions.groupLabel && (
+                  <SettingsRow
+                    icon={<IconUser size={21} />}
+                    title="Membros do grupo"
+                    detail={`${conversationActions.memberCount} participantes · ver e gerenciar`}
+                    onClick={conversationActions.onOpenMembers}
+                  />
+                )}
                 {conversationActions.canInvite && (
                   <SettingsRow
                     icon={<IconPlus size={21} />}

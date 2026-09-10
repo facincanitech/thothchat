@@ -531,7 +531,7 @@ body{
 .profile-popup{position:relative;padding-top:44px;background:var(--bg-panel,var(--bg-surface))}
 .profile-popup-back{
   position:absolute;top:14px;left:12px;z-index:2;
-  background:#fff;color:#111;border-radius:12px;
+  background:var(--btn-custom,var(--green));color:var(--on-button,#fff);border-radius:12px;
   box-shadow:0 2px 8px rgba(0,0,0,.3);
 }
 .profile-popup-stats{display:flex;justify-content:center;gap:10px;margin:12px 0}
@@ -892,7 +892,7 @@ body{
   font-size:.8rem;padding:4px 0;border-bottom:1px solid var(--line);
 }
 .chat-config-actions{display:flex;gap:4px}
-.chat-config-actions button{
+.chat-config-actions button,.chat-config-fake-btn{
   padding:6px 8px;font-size:.72rem;font-weight:500;background:var(--bg-surface-2);color:var(--text-secondary);border:1px solid var(--line);border-radius:7px;
 }
 

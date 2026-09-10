@@ -1997,16 +1997,6 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               </button>
             </>
           )}
-          {isOrganicGroup && (
-            <button
-              type="button"
-              className="nudge-btn"
-              title="Config do chat"
-              onClick={() => { setShowChatConfig(true); setConfigView('root'); setAddError(null) }}
-            >
-              <IconPlus size={20} />
-            </button>
-          )}
         </div>
       </header>
 
@@ -2019,7 +2009,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                   type="button"
                   className="icon-btn"
                   aria-label="Voltar aos detalhes"
-                  onClick={() => (conversation.type === 'dm' ? setShowChatConfig(false) : setConfigView('root'))}
+                  onClick={() => (conversation.type === 'dm' || isOrganicGroup ? setShowChatConfig(false) : setConfigView('root'))}
                 >
                   <IconArrowLeft size={20} />
                 </button>
@@ -2274,6 +2264,9 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                         </div>
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName(f)}</span>
                       </div>
+                      <span className="chat-config-actions" aria-hidden="true">
+                        <span className="chat-config-fake-btn">convidar</span>
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -2860,11 +2853,18 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           blockedIds={blockedIds}
           onBlock={blockUser}
           conversationActions={
-            conversation.type === 'dm' && otherMemberEntry && profilePopupId === otherMemberEntry[0]
+            (conversation.type === 'dm' || isOrganicGroup) && otherMemberEntry && profilePopupId === otherMemberEntry[0]
               ? {
+                  groupLabel: isOrganicGroup ? `Grupo orgânico · ${Object.keys(members).length} membros` : undefined,
+                  memberCount: Object.keys(members).length,
                   canInvite,
                   canManageBots,
                   installedBotNames: installedBots.map((bot) => bot.name),
+                  onOpenMembers: () => {
+                    setProfilePopupId(null)
+                    setShowChatConfig(true)
+                    setConfigView('members')
+                  },
                   onOpenInvite: () => {
                     setProfilePopupId(null)
                     loadInviteFriends()
