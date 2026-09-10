@@ -72,14 +72,12 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
     setLoading(true)
 
     async function load() {
-      const { data: p } = await supabase
-        .from('profiles')
-        .select('id, username, display_name, avatar_url, status, last_seen_at, email, age, city, banner_color, banner_image_url, banner_image_position, name_style_font, name_style_effect, name_style_color')
-        .eq('id', currentId)
-        .single()
-      setProfile((p as ProfileData) || null)
-
-      const [{ count: fCount }, { count: cCount }] = await Promise.all([
+      const [{ data: p }, { count: fCount }, { count: cCount }, { data: req }] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, username, display_name, avatar_url, status, last_seen_at, email, age, city, banner_color, banner_image_url, banner_image_position, name_style_font, name_style_effect, name_style_color')
+          .eq('id', currentId)
+          .single(),
         supabase
           .from('friend_requests')
           .select('id', { count: 'exact', head: true })
@@ -89,15 +87,15 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
           .from('community_members')
           .select('user_id', { count: 'exact', head: true })
           .eq('user_id', currentId),
+        supabase
+          .from('friend_requests')
+          .select('status, from_id')
+          .or(`and(from_id.eq.${me.id},to_id.eq.${currentId}),and(from_id.eq.${currentId},to_id.eq.${me.id})`)
+          .maybeSingle(),
       ])
+      setProfile((p as ProfileData) || null)
       setFriendCount(fCount || 0)
       setCommunityCount(cCount || 0)
-
-      const { data: req } = await supabase
-        .from('friend_requests')
-        .select('status, from_id')
-        .or(`and(from_id.eq.${me.id},to_id.eq.${currentId}),and(from_id.eq.${currentId},to_id.eq.${me.id})`)
-        .maybeSingle()
       if (req?.status === 'accepted') setFriendState('friends')
       else if (req?.status === 'pending' && req.from_id === me.id) setFriendState('sent')
       else setFriendState('idle')
