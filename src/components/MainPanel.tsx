@@ -339,6 +339,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
   const [editInvitePermission, setEditInvitePermission] = useState<'all' | 'owner'>('all')
   const [groupImageUploading, setGroupImageUploading] = useState(false)
   const [groupImageFailed, setGroupImageFailed] = useState(false)
+  const [confirmDeleteGroup, setConfirmDeleteGroup] = useState(false)
   const groupImageInputRef = useRef<HTMLInputElement>(null)
   const [installedBots, setInstalledBots] = useState<(Bot & { permission: 'all' | 'admin' })[]>([])
   const [catalogBots, setCatalogBots] = useState<Bot[]>([])
@@ -463,6 +464,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     setShowChatConfig(false)
     setConfigView('root')
     setEditingGroupName(false)
+    setConfirmDeleteGroup(false)
     if (!conversation || !me) return
 
     let cancelled = false
@@ -1409,6 +1411,13 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     onConversationUpdate({ invite_permission: perm })
   }
 
+  async function deleteGroup() {
+    if (!conversation) return
+    await supabase.from('conversations').delete().eq('id', conversation.id)
+    setShowChatConfig(false)
+    onBack()
+  }
+
   const canInvite = !isRoleGroup || conversation?.invite_permission !== 'owner' || myMembership?.role === 'admin'
 
   async function removeMember(targetId: string) {
@@ -1988,7 +1997,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
               </button>
             </>
           )}
-          {(conversation.type === 'dm' || isOrganicGroup) && (
+          {isOrganicGroup && (
             <button
               type="button"
               className="nudge-btn"
@@ -2005,8 +2014,17 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
         <div className="modal-backdrop" onClick={() => setShowChatConfig(false)}>
           <div className="modal-card group-info-card settings-sheet" role="dialog" aria-modal="true" aria-label="Detalhes da conversa" onClick={(e) => e.stopPropagation()}>
             <div className="settings-topbar">
-              {configView !== 'root' && <button type="button" className="icon-btn" aria-label="Voltar aos detalhes" onClick={() => setConfigView('root')}><IconArrowLeft size={20} /></button>}
-              <strong>{configView === 'root' ? (conversation.type === 'dm' ? 'Detalhes da conversa' : 'Detalhes do grupo') : configView === 'members' ? 'Participantes' : configView === 'invite' ? 'Convidar amigos' : 'Bots do grupo'}</strong>
+              {configView !== 'root' && (
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="Voltar aos detalhes"
+                  onClick={() => (conversation.type === 'dm' ? setShowChatConfig(false) : setConfigView('root'))}
+                >
+                  <IconArrowLeft size={20} />
+                </button>
+              )}
+              <strong>{configView === 'root' ? (isOrganicGroup ? 'Detalhes do grupo orgânico' : 'Detalhes do grupo') : configView === 'members' ? 'Participantes' : configView === 'invite' ? 'Convidar amigos' : 'Bots do grupo'}</strong>
               <button type="button" className="settings-close" aria-label="Fechar detalhes" onClick={() => setShowChatConfig(false)}><IconPlus size={18} /></button>
             </div>
             <div className="settings-identity" hidden={configView !== 'root'}>
@@ -2078,20 +2096,13 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             </div>
             {configView === 'root' && (
               <div className="settings-sections">
-                <SettingsRow icon={<IconUser size={21} />} title={conversation.type === 'dm' ? 'Quem está na conversa' : 'Membros do grupo'} detail={`${Object.keys(members).length} participantes · ver e gerenciar`} onClick={() => setConfigView('members')} />
-                {conversation.type === 'dm' && otherMember && otherMemberEntry && <>
-                  <SettingsRow icon={<IconHeart size={21} />} title="Ver perfil" detail="Status, amigos e comunidades" onClick={() => { setShowChatConfig(false); setProfilePopupId(otherMemberEntry[0]) }} />
-                  <div className="settings-call-actions">
-                    <button type="button" onClick={() => { setShowChatConfig(false); onStartCall({ id: otherMemberEntry[0], name: displayName(otherMember), avatarUrl: otherMember.avatar_url }, 'audio') }}><IconPhone size={20} /> Voz</button>
-                    <button type="button" onClick={() => { setShowChatConfig(false); onStartCall({ id: otherMemberEntry[0], name: displayName(otherMember), avatarUrl: otherMember.avatar_url }, 'video') }}><IconVideo size={20} /> Vídeo</button>
-                  </div>
-                </>}
+                <SettingsRow icon={<IconUser size={21} />} title="Membros do grupo" detail={`${Object.keys(members).length} participantes · ver e gerenciar`} onClick={() => setConfigView('members')} />
                 {canInvite && <SettingsRow icon={<IconPlus size={21} />} title="Convidar amigo" detail="Adicionar alguém à conversa" onClick={() => {
                   loadInviteFriends()
                   if (isRoleGroup && myMembership?.role === 'admin') loadJoinRequests()
                   setConfigView('invite')
                 }} />}
-                {canManageBots && <SettingsRow icon={<IconChat size={21} />} title={conversation.type === 'dm' ? 'Bots da conversa' : 'Bots do grupo'} detail={installedBots.length ? installedBots.map((bot) => bot.name).join(' · ') : 'Escolher bots disponíveis'} onClick={() => { loadCatalogBots(); setConfigView('bots') }} />}
+                {canManageBots && <SettingsRow icon={<IconChat size={21} />} title="Bots do grupo" detail={installedBots.length ? installedBots.map((bot) => bot.name).join(' · ') : 'Escolher bots disponíveis'} onClick={() => { loadCatalogBots(); setConfigView('bots') }} />}
                 {canManageBots && isRoleGroup && <div className="settings-permissions">
                   <label className="group-info-section-label">Quem pode convidar</label>
                   <div className="theme-picker">
@@ -2099,6 +2110,15 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                     <button type="button" className={`theme-option${editInvitePermission === 'owner' ? ' active' : ''}`} onClick={() => saveInvitePermission('owner')}>Só o dono</button>
                   </div>
                 </div>}
+                {conversation.created_by === me?.id && !confirmDeleteGroup && (
+                  <SettingsRow icon={<IconMinusCircle size={21} />} title="Excluir grupo" danger onClick={() => setConfirmDeleteGroup(true)} />
+                )}
+                {conversation.created_by === me?.id && confirmDeleteGroup && (
+                  <div style={{ display: 'flex', gap: 8, padding: '10px 5px' }}>
+                    <button type="button" className="danger" onClick={deleteGroup}>Confirmar exclusão</button>
+                    <button type="button" onClick={() => setConfirmDeleteGroup(false)}>cancelar</button>
+                  </div>
+                )}
               </div>
             )}
             {configView === 'members' && (
@@ -2839,6 +2859,27 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           onOpenCommunity={onOpenCommunity}
           blockedIds={blockedIds}
           onBlock={blockUser}
+          conversationActions={
+            conversation.type === 'dm' && otherMemberEntry && profilePopupId === otherMemberEntry[0]
+              ? {
+                  canInvite,
+                  canManageBots,
+                  installedBotNames: installedBots.map((bot) => bot.name),
+                  onOpenInvite: () => {
+                    setProfilePopupId(null)
+                    loadInviteFriends()
+                    setShowChatConfig(true)
+                    setConfigView('invite')
+                  },
+                  onOpenBots: () => {
+                    setProfilePopupId(null)
+                    loadCatalogBots()
+                    setShowChatConfig(true)
+                    setConfigView('bots')
+                  },
+                }
+              : undefined
+          }
         />
       )}
     </main>

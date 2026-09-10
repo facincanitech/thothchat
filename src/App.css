@@ -447,6 +447,7 @@ body{
 .settings-description .icon-btn{width:36px;height:40px;flex-shrink:0;color:var(--accent-text)}
 .settings-sections{border-top:1px solid var(--line)}
 .settings-row{width:100%;min-height:68px;display:flex;align-items:center;gap:14px;text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--text-base);padding:13px 5px;cursor:pointer}
+.settings-row-danger,.settings-row-danger .settings-row-icon{color:#e5484d}
 .settings-row-icon{width:32px;flex-shrink:0;display:grid;place-items:center;color:var(--accent-text)}
 .settings-row-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px}
 .settings-row-copy strong{font-size:14px;font-weight:600;line-height:1.4}

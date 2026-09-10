@@ -3,8 +3,9 @@ import { supabase } from '../lib/supabase'
 import { displayName } from '../lib/displayName'
 import { StyledName } from './StyledName'
 import { AvatarBox } from './AvatarBox'
+import { SettingsRow } from './SettingsRow'
 import { formatPresence } from '../lib/presence'
-import { IconArrowLeft, IconMore, IconPlus, IconUser } from './icons'
+import { IconArrowLeft, IconChat, IconMore, IconPlus, IconUser } from './icons'
 import type { Community, Profile } from '../types'
 
 type ProfileData = {
@@ -29,6 +30,14 @@ type ListPerson = { id: string; username: string; display_name: string | null; a
 
 type View = 'profile' | 'friends' | 'communities'
 
+type ConversationActions = {
+  canInvite: boolean
+  canManageBots: boolean
+  installedBotNames: string[]
+  onOpenInvite: () => void
+  onOpenBots: () => void
+}
+
 type Props = {
   me: Profile
   userId: string
@@ -36,9 +45,10 @@ type Props = {
   onOpenCommunity: (c: Community) => void
   blockedIds: Set<string>
   onBlock: (userId: string) => void
+  conversationActions?: ConversationActions
 }
 
-export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds, onBlock }: Props) {
+export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds, onBlock, conversationActions }: Props) {
   const [stack, setStack] = useState<string[]>([userId])
   const [view, setView] = useState<View>('profile')
   const [profile, setProfile] = useState<ProfileData | null>(null)
@@ -221,6 +231,27 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
                   <IconPlus size={14} /> Amigar
                 </button>
               )
+            )}
+
+            {isRoot && conversationActions && (
+              <div className="settings-sections" style={{ width: '100%', marginTop: 14, textAlign: 'left' }}>
+                {conversationActions.canInvite && (
+                  <SettingsRow
+                    icon={<IconPlus size={21} />}
+                    title="Convidar amigo"
+                    detail="Adicionar alguém à conversa"
+                    onClick={conversationActions.onOpenInvite}
+                  />
+                )}
+                {conversationActions.canManageBots && (
+                  <SettingsRow
+                    icon={<IconChat size={21} />}
+                    title="Bots da conversa"
+                    detail={conversationActions.installedBotNames.length ? conversationActions.installedBotNames.join(' · ') : 'Escolher bots disponíveis'}
+                    onClick={conversationActions.onOpenBots}
+                  />
+                )}
+              </div>
             )}
           </>
         )}

@@ -68,7 +68,7 @@ function recordEvent(bufferRef: React.MutableRefObject<ReplayEvent[]>, text: str
   bufferRef.current = bufferRef.current.filter((e) => now - e.t <= REPLAY_WINDOW_MS)
 }
 
-export function CommunityView({ me, community, activeTab, onTabChange, onCommunityUpdate, onBack, sidebarCollapsed, onToggleSidebar }: Props) {
+export function CommunityView({ me, community, activeTab, onTabChange, onCommunityUpdate, onDeleted, onBack, sidebarCollapsed, onToggleSidebar }: Props) {
   const [posts, setPosts] = useState<Post[]>([])
   const [comments, setComments] = useState<Comment[]>([])
   const [reactions, setReactions] = useState<Reaction[]>([])
@@ -87,6 +87,7 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
   const [editImageUrl, setEditImageUrl] = useState('')
   const [imageUploading, setImageUploading] = useState(false)
   const [showMembers, setShowMembers] = useState(false)
+  const [confirmDeleteCommunity, setConfirmDeleteCommunity] = useState(false)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const [editCategory, setEditCategory] = useState('')
   const [editLanguage, setEditLanguage] = useState('')
@@ -189,6 +190,7 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
     setEditLanguage(community.language || '')
     setEditIsPrivate(community.is_private)
     setInfoError(null)
+    setConfirmDeleteCommunity(false)
   }, [community.id, community.name, community.image_url, community.category, community.language, community.is_private])
 
   function authorLabel(id: string): string {
@@ -256,6 +258,16 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
       onCommunityUpdate(patch)
     } catch (err) {
       setInfoError(getErrorMessage(err))
+    } finally {
+      setInfoBusy(false)
+    }
+  }
+
+  async function deleteCommunity() {
+    setInfoBusy(true)
+    try {
+      await supabase.from('communities').delete().eq('id', community.id)
+      onDeleted()
     } finally {
       setInfoBusy(false)
     }
@@ -678,6 +690,15 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
               </details>
               <button type="button" disabled={infoBusy} onClick={saveCommunityInfo} style={{ marginTop: 8 }}>Salvar</button>
               {infoError && <span className="auth-error">{infoError}</span>}
+              {isOwner && !confirmDeleteCommunity && (
+                <SettingsRow icon={<IconTrash size={21} />} title="Excluir comunidade" danger onClick={() => setConfirmDeleteCommunity(true)} />
+              )}
+              {isOwner && confirmDeleteCommunity && (
+                <div style={{ display: 'flex', gap: 8, padding: '10px 5px' }}>
+                  <button type="button" className="danger" disabled={infoBusy} onClick={deleteCommunity}>Confirmar exclusão</button>
+                  <button type="button" disabled={infoBusy} onClick={() => setConfirmDeleteCommunity(false)}>cancelar</button>
+                </div>
+              )}
             </div>
             </details>
           ) : (
