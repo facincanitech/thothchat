@@ -37,15 +37,15 @@
 
 [data-theme="light"]{
   color-scheme: light;
-  --bg:#ffffff; --panel:#fff; --panel2:#f2f5fb; --line:#e5ebf5; --text:#252b3b;
-  --text-base:#252b3b;
-  --muted:#72798b; --bubble:#ebf3fe; --hover:#f1f3f9; --input:#f2f5fb;
-  --bg-deep:#ffffff; --bg-panel:#fff; --bg-surface:#fff; --bg-surface-2:#f2f5fb;
-  --bg-selected:#ebf3fe; --line-2:#dbe6f5; --muted-2:#777f91; --text-secondary:#515b70;
-  --accent-text:#3762af; --avatar-bg:#ebf3fe; --accent-dim-bg:#ebf3fe; --danger-bg:#fcebed;
-  --danger:#bd3543; --scrollbar:#d1d6e2; --green:#3762af; --green2:#2d4f8f;
-  --rail-bg:#fcfcfe; --rail-icon:#727a8e;
-  --shadow:0 12px 36px rgb(29 43 78 / 9%);
+  --bg:#d8ebf7; --panel:#fff; --panel2:#ffffff; --line:#c7dced; --text:#1c2733;
+  --text-base:#1c2733;
+  --muted:#5c7688; --bubble:#eef8ff; --hover:#eef8ff; --input:#ffffff;
+  --bg-deep:#d8ebf7; --bg-panel:#fff; --bg-surface:#fff; --bg-surface-2:#ffffff;
+  --bg-selected:#eef8ff; --line-2:#c7dced; --muted-2:#5c7688; --text-secondary:#3f5b6d;
+  --accent-text:#087dac; --avatar-bg:#eef8ff; --accent-dim-bg:#eef8ff; --danger-bg:#fcebed;
+  --danger:#bd3543; --scrollbar:#b7d4e6; --green:#5fb4e2; --green2:#4a9bc7;
+  --rail-bg:#d8ebf7; --rail-icon:#3f5b6d;
+  --shadow:0 12px 36px rgb(8 125 172 / 12%);
 }
 
 [data-theme="contrast"]{
@@ -979,7 +979,7 @@ body{
   padding:22px 20px;height:100%;min-height:0;overflow-y:auto;
 }
 .community-sidebar-photo{
-  width:96px;height:96px;border-radius:26px;overflow:hidden;background:var(--line);
+  width:150px;height:200px;border-radius:14px;overflow:hidden;background:var(--line);
   display:grid;place-items:center;font-size:40px;font-weight:700;color:var(--muted);
   margin-top:6px;flex-shrink:0;
 }
@@ -991,6 +991,7 @@ body{
   padding:11px 14px;border-radius:10px;cursor:pointer;font-size:14px;
 }
 .community-sidebar-nav.active{background:var(--btn-custom,var(--accent-dim-bg));color:var(--on-button,var(--accent-text));font-weight:600}
+[data-theme="light"] .community-sidebar-nav.active{background:var(--btn-custom,#087dac);color:var(--on-button,#fff)}
 
 .community-tabs{display:none}
 .community-main .community-header{min-height:68px;padding-top:10px;padding-bottom:10px}
