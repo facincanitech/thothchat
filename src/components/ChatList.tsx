@@ -441,6 +441,7 @@ export function ChatList({
   const [contextMenu, setContextMenu] = useState<{ conv: ConvWithLabel; x: number; y: number } | null>(null)
   const [confirmDeleteConv, setConfirmDeleteConv] = useState<ConvWithLabel | null>(null)
   const [quickMenuOpen, setQuickMenuOpen] = useState(false)
+  const [groupsQuickEntry, setGroupsQuickEntry] = useState(false)
 
   const [accountView, setAccountView] = useState<AccountView>('root')
   const pendingAccountViewRef = useRef<AccountView | null>(null)
@@ -1595,30 +1596,34 @@ export function ChatList({
               {quickMenuOpen && (
                 <>
                   <div style={{ position: 'fixed', inset: 0, zIndex: 5 }} onClick={() => setQuickMenuOpen(false)} />
-                  <div className="request-menu" style={{ top: 44, right: 0, zIndex: 6 }}>
+                  <div className="request-menu quick-actions-menu" style={{ top: 44, right: 0, zIndex: 6 }}>
                     <button
                       type="button"
-                      onClick={() => { setQuickMenuOpen(false); onGroupsOpenChange(true); setGroupsView('group-create') }}
+                      onClick={() => { setQuickMenuOpen(false); setGroupsQuickEntry(true); onGroupsOpenChange(true); setGroupsView('group-create') }}
                     >
-                      <IconGroup size={16} /> Criar grupo
+                      <IconGroup size={18} />
+                      <span>Criar grupo</span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setQuickMenuOpen(false); onGroupsOpenChange(true); setGroupsView('community-create') }}
+                      onClick={() => { setQuickMenuOpen(false); setGroupsQuickEntry(true); onGroupsOpenChange(true); setGroupsView('community-create') }}
                     >
-                      <IconHeart size={16} /> Criar comunidade
+                      <IconHeart size={18} />
+                      <span>Criar comunidade</span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setQuickMenuOpen(false); onGroupsOpenChange(true); setCommunityQuery(''); setGroupsView('community-search') }}
+                      onClick={() => { setQuickMenuOpen(false); setGroupsQuickEntry(true); onGroupsOpenChange(true); setCommunityQuery(''); setGroupsView('community-search') }}
                     >
-                      <IconHeart size={16} /> Buscar comunidades
+                      <IconHeart size={18} />
+                      <span>Buscar comunidades</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => { setQuickMenuOpen(false); onPanelOpenChange(true); onPanelViewChange('contact') }}
                     >
-                      <IconUser size={16} /> Novo contato
+                      <IconUser size={18} />
+                      <span>Novo contato</span>
                     </button>
                   </div>
                 </>
@@ -2514,6 +2519,7 @@ export function ChatList({
             type="button"
             className="icon-btn"
             onClick={() => {
+              if (groupsQuickEntry) { setGroupsQuickEntry(false); onGroupsOpenChange(false); return }
               if (groupsView === 'root') { onGroupsOpenChange(false); return }
               if (groupsView === 'group-create') { setGroupsView('group-root'); return }
               if (groupsView === 'community-create' || groupsView === 'community-search') { setGroupsView('community-root'); return }
