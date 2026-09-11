@@ -37,7 +37,9 @@ import type { Community, Conversation, PanelView, Profile } from '../types'
 
 type AccountView = 'root' | 'profile' | 'appearance' | 'account' | 'privacy' | 'blocked' | 'terms' | 'privacy-policy'
 
-export type GroupsView = 'group-root' | 'group-create' | 'group-search' | 'community-root' | 'community-create' | 'community-search'
+export type GroupsView =
+  | 'group-root' | 'group-create' | 'group-search' | 'group-trending' | 'group-mine'
+  | 'community-root' | 'community-create' | 'community-search' | 'community-trending' | 'community-mine'
 
 const BANNER_COLORS = [
   'linear-gradient(135deg,#36d1dc,#5b86e5)',
@@ -1666,6 +1668,34 @@ export function ChatList({
                     </button>
                     <button
                       type="button"
+                      onClick={() => { setQuickMenuOpen(false); setGroupsQuickEntry(true); onGroupsOpenChange(true); setGroupsView('group-trending') }}
+                    >
+                      <IconGroup size={18} />
+                      <span>Grupos em alta</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setQuickMenuOpen(false); setGroupsQuickEntry(true); onGroupsOpenChange(true); setGroupsView('group-mine') }}
+                    >
+                      <IconGroup size={18} />
+                      <span>Meus grupos</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setQuickMenuOpen(false); setGroupsQuickEntry(true); onGroupsOpenChange(true); setGroupsView('community-trending') }}
+                    >
+                      <IconHeart size={18} />
+                      <span>Comunidades em alta</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setQuickMenuOpen(false); setGroupsQuickEntry(true); onGroupsOpenChange(true); setGroupsView('community-mine') }}
+                    >
+                      <IconHeart size={18} />
+                      <span>Minhas comunidades</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => { setQuickMenuOpen(false); onPanelOpenChange(true); onPanelViewChange('contact') }}
                     >
                       <IconUser size={18} />
@@ -2567,16 +2597,14 @@ export function ChatList({
             onClick={() => {
               if (groupsQuickEntry) { setGroupsQuickEntry(false); onGroupsOpenChange(false); return }
               if (groupsView === 'group-root' || groupsView === 'community-root') { onGroupsOpenChange(false); return }
-              if (groupsView === 'group-create' || groupsView === 'group-search') { setGroupsView('group-root'); return }
-              setGroupsView('community-root')
+              if (groupsView.startsWith('community-')) { setGroupsView('community-root'); return }
+              setGroupsView('group-root')
             }}
           >
             <IconArrowLeft size={20} />
           </button>
           <div className="brand" style={{ fontSize: 18 }}>
-            {groupsView === 'community-root' || groupsView === 'community-create' || groupsView === 'community-search'
-              ? 'ThothChat - Comunidades'
-              : 'ThothChat - Grupos'}
+            {groupsView.startsWith('community-') ? 'ThothChat - Comunidades' : 'ThothChat - Grupos'}
           </div>
         </div>
 
@@ -2591,55 +2619,63 @@ export function ChatList({
                 <div className="option-icon"><IconSearch size={20} /></div>
                 <span>Buscar grupos</span>
               </div>
-            </div>
-            <label className="section-label">
-              Grupos em alta
-            </label>
-            <div className="chat-list">
-              {trendingGroups.length === 0 && <div className="empty">Nenhum grupo público ainda</div>}
-              {trendingGroups.map((g) => (
-                <div
-                  key={g.id}
-                  className="chat"
-                  onClick={() => {
-                    onSelect({ id: g.id, type: 'group', name: g.name, image_url: g.image_url, created_by: '', created_at: '' } as Conversation)
-                    onLeaveGroupsPanel('group-root')
-                  }}
-                >
-                  <AvatarBox src={g.image_url} id={g.id} fallbackLetter={(g.name || "G")[0]?.toUpperCase()} className="photo" />
-                  <div className="chat-info">
-                    <div className="row">
-                      <div className="name">{g.name}</div>
-                    </div>
-                    <div className="preview">{g.member_count} {g.member_count === 1 ? 'membro' : 'membros'}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <label className="section-label">
-              Meus grupos
-            </label>
-            <div className="chat-list">
-              {myGroups.length === 0 && <div className="empty">Nenhum grupo ainda</div>}
-              {myGroups.map((g) => (
-                <div
-                  key={g.id}
-                  className="chat"
-                  onClick={() => {
-                    onSelect({ id: g.id, type: 'group', name: g.name, image_url: g.image_url, created_by: '', created_at: '' } as Conversation)
-                    onLeaveGroupsPanel('group-root')
-                  }}
-                >
-                  <AvatarBox src={g.image_url} id={g.id} fallbackLetter={(g.name || "G")[0]?.toUpperCase()} className="photo" />
-                  <div className="chat-info">
-                    <div className="row">
-                      <div className="name">{g.name}{g.role === 'admin' ? ' (adm)' : g.role === 'moderator' ? ' (mod)' : ''}</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+              <div className="new-conv-option" onClick={() => setGroupsView('group-trending')}>
+                <div className="option-icon"><IconGroup size={20} /></div>
+                <span>Grupos em alta</span>
+              </div>
+              <div className="new-conv-option" onClick={() => setGroupsView('group-mine')}>
+                <div className="option-icon"><IconGroup size={20} /></div>
+                <span>Meus grupos</span>
+              </div>
             </div>
           </>
+        )}
+
+        {groupsView === 'group-trending' && (
+          <div className="chat-list">
+            {trendingGroups.length === 0 && <div className="empty">Nenhum grupo público ainda</div>}
+            {trendingGroups.map((g) => (
+              <div
+                key={g.id}
+                className="chat"
+                onClick={() => {
+                  onSelect({ id: g.id, type: 'group', name: g.name, image_url: g.image_url, created_by: '', created_at: '' } as Conversation)
+                  onLeaveGroupsPanel('group-root')
+                }}
+              >
+                <AvatarBox src={g.image_url} id={g.id} fallbackLetter={(g.name || "G")[0]?.toUpperCase()} className="photo" />
+                <div className="chat-info">
+                  <div className="row">
+                    <div className="name">{g.name}</div>
+                  </div>
+                  <div className="preview">{g.member_count} {g.member_count === 1 ? 'membro' : 'membros'}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {groupsView === 'group-mine' && (
+          <div className="chat-list">
+            {myGroups.length === 0 && <div className="empty">Nenhum grupo ainda</div>}
+            {myGroups.map((g) => (
+              <div
+                key={g.id}
+                className="chat"
+                onClick={() => {
+                  onSelect({ id: g.id, type: 'group', name: g.name, image_url: g.image_url, created_by: '', created_at: '' } as Conversation)
+                  onLeaveGroupsPanel('group-root')
+                }}
+              >
+                <AvatarBox src={g.image_url} id={g.id} fallbackLetter={(g.name || "G")[0]?.toUpperCase()} className="photo" />
+                <div className="chat-info">
+                  <div className="row">
+                    <div className="name">{g.name}{g.role === 'admin' ? ' (adm)' : g.role === 'moderator' ? ' (mod)' : ''}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
 
         {groupsView === 'group-search' && (
@@ -2679,56 +2715,64 @@ export function ChatList({
                 <div className="option-icon"><IconSearch size={20} /></div>
                 <span>Buscar comunidades</span>
               </div>
-            </div>
-            <label className="section-label">
-              Comunidades em alta
-            </label>
-            <div className="chat-list">
-              {trendingCommunities.length === 0 && <div className="empty">Nenhuma comunidade ainda</div>}
-              {trendingCommunities.map((c) => (
-                <div
-                  key={c.id}
-                  className="chat"
-                  onClick={() => {
-                    onLeaveGroupsPanel('community-root')
-                    onSelectCommunity(c)
-                  }}
-                >
-                  <AvatarBox src={c.image_url} id={c.id} fallbackLetter={(c.name || "C")[0]?.toUpperCase()} className="photo" />
-                  <div className="chat-info">
-                    <div className="row">
-                      <div className="name">{c.name}</div>
-                    </div>
-                    <div className="preview">{c.comment_count} {c.comment_count === 1 ? 'comentário' : 'comentários'}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <label className="section-label">
-              Minhas comunidades
-            </label>
-            <div className="chat-list">
-              {myCommunities.length === 0 && <div className="empty">Nenhuma comunidade ainda</div>}
-              {myCommunities.map((c) => (
-                <div
-                  key={c.id}
-                  className="chat"
-                  onClick={() => {
-                    onLeaveGroupsPanel('community-root')
-                    onSelectCommunity(c)
-                  }}
-                >
-                  <AvatarBox src={c.image_url} id={c.id} fallbackLetter={(c.name || "C")[0]?.toUpperCase()} className="photo" />
-                  <div className="chat-info">
-                    <div className="row">
-                      <div className="name">{c.name}</div>
-                    </div>
-                    {c.category && <div className="preview">{c.category}</div>}
-                  </div>
-                </div>
-              ))}
+              <div className="new-conv-option" onClick={() => setGroupsView('community-trending')}>
+                <div className="option-icon"><IconHeart size={20} /></div>
+                <span>Comunidades em alta</span>
+              </div>
+              <div className="new-conv-option" onClick={() => setGroupsView('community-mine')}>
+                <div className="option-icon"><IconHeart size={20} /></div>
+                <span>Minhas comunidades</span>
+              </div>
             </div>
           </>
+        )}
+
+        {groupsView === 'community-trending' && (
+          <div className="chat-list">
+            {trendingCommunities.length === 0 && <div className="empty">Nenhuma comunidade ainda</div>}
+            {trendingCommunities.map((c) => (
+              <div
+                key={c.id}
+                className="chat"
+                onClick={() => {
+                  onLeaveGroupsPanel('community-root')
+                  onSelectCommunity(c)
+                }}
+              >
+                <AvatarBox src={c.image_url} id={c.id} fallbackLetter={(c.name || "C")[0]?.toUpperCase()} className="photo" />
+                <div className="chat-info">
+                  <div className="row">
+                    <div className="name">{c.name}</div>
+                  </div>
+                  <div className="preview">{c.comment_count} {c.comment_count === 1 ? 'comentário' : 'comentários'}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {groupsView === 'community-mine' && (
+          <div className="chat-list">
+            {myCommunities.length === 0 && <div className="empty">Nenhuma comunidade ainda</div>}
+            {myCommunities.map((c) => (
+              <div
+                key={c.id}
+                className="chat"
+                onClick={() => {
+                  onLeaveGroupsPanel('community-root')
+                  onSelectCommunity(c)
+                }}
+              >
+                <AvatarBox src={c.image_url} id={c.id} fallbackLetter={(c.name || "C")[0]?.toUpperCase()} className="photo" />
+                <div className="chat-info">
+                  <div className="row">
+                    <div className="name">{c.name}</div>
+                  </div>
+                  {c.category && <div className="preview">{c.category}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
 
         {groupsView === 'group-create' && (
