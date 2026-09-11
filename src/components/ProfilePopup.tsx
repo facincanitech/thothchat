@@ -215,6 +215,7 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
           </>
         )}
 
+        <div className="profile-popup-scroll">
         {loading && <p style={{ padding: '30px 0' }}>carregando...</p>}
 
         {!loading && profile && view === 'profile' && (
@@ -266,9 +267,9 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
 
             {currentId !== me.id && (
               friendState === 'friends' ? (
-                <p style={{ fontSize: '.75rem', color: '#a9e7d8' }}>✓ Amigos</p>
+                <p style={{ fontSize: '.75rem', color: 'var(--accent-text)', fontWeight: 600 }}>✓ Amigos</p>
               ) : friendState === 'sent' ? (
-                <p style={{ fontSize: '.75rem', color: '#a9e7d8' }}>solicitação de amizade enviada</p>
+                <p style={{ fontSize: '.75rem', color: 'var(--accent-text)', fontWeight: 600 }}>solicitação de amizade enviada</p>
               ) : (
                 <button type="button" className="google-btn" onClick={sendFriendRequest}>
                   <IconPlus size={14} /> Amigar
@@ -342,6 +343,7 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
             </div>
           </>
         )}
+        </div>
       </div>
     </div>
   )

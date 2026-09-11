@@ -1050,6 +1050,13 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
     if (!error) onConversationUpdate({ invite_requires_approval: next })
   }
 
+  async function toggleGroupPublic() {
+    if (!conversation) return
+    const next = !conversation.is_public
+    const { error } = await supabase.from('conversations').update({ is_public: next }).eq('id', conversation.id)
+    if (!error) onConversationUpdate({ is_public: next })
+  }
+
   async function loadJoinRequests() {
     if (!conversation) return
     const { data } = await supabase
@@ -2219,6 +2226,20 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
                     <button type="button" className={`theme-option${editInvitePermission === 'owner' ? ' active' : ''}`} onClick={() => saveInvitePermission('owner')}>Só o dono</button>
                   </div>
                 </div>}
+                {canManageBots && isRoleGroup && (
+                  <div className="settings-permissions">
+                    <label className="group-info-section-label">Visibilidade</label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '.85rem' }}>
+                      <input
+                        type="checkbox"
+                        style={{ width: 'auto' }}
+                        checked={!!conversation.is_public}
+                        onChange={toggleGroupPublic}
+                      />
+                      Grupo público (aparece na busca e em "grupos em alta")
+                    </label>
+                  </div>
+                )}
                 {conversation.created_by === me?.id && !confirmDeleteGroup && (
                   <button type="button" className="settings-danger-btn" onClick={() => setConfirmDeleteGroup(true)}>
                     <IconMinusCircle size={18} /> Excluir grupo
