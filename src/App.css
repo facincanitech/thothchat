@@ -893,7 +893,7 @@ body{
   width:72px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;
   padding:8px 4px;white-space:normal;
 }
-.quick-actions-menu button span{font-size:.65rem;line-height:1.15;color:var(--text-base)}
+.quick-actions-menu button span{font-size:.6rem;line-height:1.1;color:var(--text-base)}
 [data-theme="light"] .quick-actions-menu button:hover{background:var(--bg-surface-2)}
 
 .context-menu-backdrop{position:fixed;inset:0;z-index:60}
