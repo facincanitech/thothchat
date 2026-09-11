@@ -37,7 +37,7 @@ import type { Community, Conversation, PanelView, Profile } from '../types'
 
 type AccountView = 'root' | 'profile' | 'appearance' | 'account' | 'privacy' | 'blocked' | 'terms' | 'privacy-policy'
 
-export type GroupsView = 'root' | 'group-root' | 'group-create' | 'community-root' | 'community-create' | 'community-search'
+export type GroupsView = 'group-root' | 'group-create' | 'group-search' | 'community-root' | 'community-create' | 'community-search'
 
 const BANNER_COLORS = [
   'linear-gradient(135deg,#36d1dc,#5b86e5)',
@@ -278,15 +278,19 @@ export function ChatList({
     if (!lastUserId) return []
     return readCache<ConvWithLabel[]>(`flux-conversations:${lastUserId}`) || []
   })
-  const [groupsView, setGroupsView] = useState<GroupsView>('root')
+  const [groupsView, setGroupsView] = useState<GroupsView>('group-root')
   const [myGroups, setMyGroups] = useState<{ id: string; name: string; role: string | null; image_url: string | null }[]>([])
   const [newGroupName, setNewGroupName] = useState('')
   const [newGroupDesc, setNewGroupDesc] = useState('')
   const [newGroupImageUrl, setNewGroupImageUrl] = useState('')
   const [newGroupImageUploading, setNewGroupImageUploading] = useState(false)
+  const [newGroupIsPublic, setNewGroupIsPublic] = useState(false)
   const newGroupImageInputRef = useRef<HTMLInputElement>(null)
   const [groupsBusy, setGroupsBusy] = useState(false)
   const [groupsError, setGroupsError] = useState<string | null>(null)
+  const [trendingGroups, setTrendingGroups] = useState<{ id: string; name: string; image_url: string | null; member_count: number }[]>([])
+  const [publicGroups, setPublicGroups] = useState<Conversation[]>([])
+  const [groupQuery, setGroupQuery] = useState('')
   const [communities, setCommunities] = useState<Community[]>([])
   const [myCommunities, setMyCommunities] = useState<Community[]>([])
   const [communityMemberCount, setCommunityMemberCount] = useState(0)
@@ -316,6 +320,17 @@ export function ChatList({
   const draggedKeyRef = useRef<FilterKey | null>(null)
   const filtersRef = useRef<HTMLDivElement>(null)
   const [filterPopupOpen, setFilterPopupOpen] = useState(false)
+
+  useEffect(() => {
+    if (!filterPopupOpen) return
+    function handleOutside(e: PointerEvent) {
+      if (filtersRef.current && !filtersRef.current.contains(e.target as Node)) {
+        setFilterPopupOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', handleOutside, true)
+    return () => document.removeEventListener('pointerdown', handleOutside, true)
+  }, [filterPopupOpen])
   const VISIBLE_FILTER_COUNT = 3
 
   useEffect(() => {
@@ -1115,13 +1130,50 @@ export function ChatList({
     setTrendingCommunities((data as (Community & { comment_count: number })[]) || [])
   }
 
+  async function loadPublicGroups() {
+    const { data } = await supabase
+      .from('conversations')
+      .select('*')
+      .eq('type', 'group')
+      .eq('is_public', true)
+      .order('created_at', { ascending: false })
+    setPublicGroups((data as Conversation[]) || [])
+  }
+
+  async function loadTrendingGroups() {
+    const { data } = await supabase.rpc('get_trending_public_groups', { p_limit: 5 })
+    setTrendingGroups((data as { id: string; name: string; image_url: string | null; member_count: number }[]) || [])
+  }
+
+  async function joinPublicGroup(g: Conversation) {
+    if (!me) return
+    setGroupsBusy(true)
+    setGroupsError(null)
+    try {
+      if (g.invite_requires_approval) {
+        await supabase.from('conversation_join_requests').insert({ conversation_id: g.id, user_id: me.id })
+        alert(`Pedido pra entrar em "${g.name}" enviado — aguarde um admin aceitar.`)
+        return
+      }
+      await supabase.from('conversation_members').insert({ conversation_id: g.id, user_id: me.id, role: 'member' })
+      onLeaveGroupsPanel('group-search')
+      onSelect(g)
+      loadMyGroups()
+    } catch (err) {
+      setGroupsError(getErrorMessage(err))
+    } finally {
+      setGroupsBusy(false)
+    }
+  }
+
   useEffect(() => {
     if (groupsOpen && me) {
-      setGroupsView('root')
+      setGroupsView('group-root')
       setGroupsError(null)
       setNewGroupName('')
       setNewGroupDesc('')
       setNewGroupImageUrl('')
+      setNewGroupIsPublic(false)
       setNewCommunityName('')
       setNewCommunityDesc('')
       setNewCommunityCategory('')
@@ -1132,6 +1184,8 @@ export function ChatList({
       loadCommunities()
       loadMyCommunities()
       loadTrendingCommunities()
+      loadPublicGroups()
+      loadTrendingGroups()
     }
   }, [groupsOpen, me?.id])
 
@@ -1200,7 +1254,7 @@ export function ChatList({
     try {
       const { data: conv, error: convErr } = await supabase
         .from('conversations')
-        .insert({ type: 'group', name, description: newGroupDesc.trim() || null, image_url: sanitizeImageUrl(newGroupImageUrl), created_by: me.id })
+        .insert({ type: 'group', name, description: newGroupDesc.trim() || null, image_url: sanitizeImageUrl(newGroupImageUrl), is_public: newGroupIsPublic, created_by: me.id })
         .select()
         .single()
       if (convErr) throw convErr
@@ -2508,10 +2562,9 @@ export function ChatList({
             className="icon-btn"
             onClick={() => {
               if (groupsQuickEntry) { setGroupsQuickEntry(false); onGroupsOpenChange(false); return }
-              if (groupsView === 'root') { onGroupsOpenChange(false); return }
-              if (groupsView === 'group-create') { setGroupsView('group-root'); return }
-              if (groupsView === 'community-create' || groupsView === 'community-search') { setGroupsView('community-root'); return }
-              setGroupsView('root')
+              if (groupsView === 'group-root' || groupsView === 'community-root') { onGroupsOpenChange(false); return }
+              if (groupsView === 'group-create' || groupsView === 'group-search') { setGroupsView('group-root'); return }
+              setGroupsView('community-root')
             }}
           >
             <IconArrowLeft size={20} />
@@ -2523,45 +2576,6 @@ export function ChatList({
           </div>
         </div>
 
-        {groupsView === 'root' && (
-          <>
-            <div className="new-conv-list">
-              <div className="new-conv-option" onClick={() => setGroupsView('group-root')}>
-                <div className="option-icon"><IconGroup size={20} /></div>
-                <span>Grupo</span>
-              </div>
-              <div className="new-conv-option" onClick={() => setGroupsView('community-root')}>
-                <div className="option-icon"><IconHeart size={20} /></div>
-                <span>Comunidade</span>
-              </div>
-            </div>
-            <label className="section-label">
-              Comunidades em alta
-            </label>
-            <div className="chat-list">
-              {trendingCommunities.length === 0 && <div className="empty">Nenhuma comunidade ainda</div>}
-              {trendingCommunities.map((c) => (
-                <div
-                  key={c.id}
-                  className="chat"
-                  onClick={() => {
-                    onLeaveGroupsPanel('root')
-                    onSelectCommunity(c)
-                  }}
-                >
-                  <AvatarBox src={c.image_url} id={c.id} fallbackLetter={(c.name || "C")[0]?.toUpperCase()} className="photo" />
-                  <div className="chat-info">
-                    <div className="row">
-                      <div className="name">{c.name}</div>
-                    </div>
-                    <div className="preview">{c.comment_count} {c.comment_count === 1 ? 'comentário' : 'comentários'}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-
         {groupsView === 'group-root' && (
           <>
             <div className="new-conv-list">
@@ -2569,6 +2583,34 @@ export function ChatList({
                 <div className="option-icon"><IconGroup size={20} /></div>
                 <span>Criar grupo</span>
               </div>
+              <div className="new-conv-option" onClick={() => { setGroupQuery(''); setGroupsView('group-search') }}>
+                <div className="option-icon"><IconSearch size={20} /></div>
+                <span>Buscar grupos</span>
+              </div>
+            </div>
+            <label className="section-label">
+              Grupos em alta
+            </label>
+            <div className="chat-list">
+              {trendingGroups.length === 0 && <div className="empty">Nenhum grupo público ainda</div>}
+              {trendingGroups.map((g) => (
+                <div
+                  key={g.id}
+                  className="chat"
+                  onClick={() => {
+                    onSelect({ id: g.id, type: 'group', name: g.name, image_url: g.image_url, created_by: '', created_at: '' } as Conversation)
+                    onLeaveGroupsPanel('group-root')
+                  }}
+                >
+                  <AvatarBox src={g.image_url} id={g.id} fallbackLetter={(g.name || "G")[0]?.toUpperCase()} className="photo" />
+                  <div className="chat-info">
+                    <div className="row">
+                      <div className="name">{g.name}</div>
+                    </div>
+                    <div className="preview">{g.member_count} {g.member_count === 1 ? 'membro' : 'membros'}</div>
+                  </div>
+                </div>
+              ))}
             </div>
             <label className="section-label">
               Meus grupos
@@ -2596,6 +2638,32 @@ export function ChatList({
           </>
         )}
 
+        {groupsView === 'group-search' && (
+          <div className="new-conv-form">
+            <input
+              placeholder="Buscar grupos..."
+              value={groupQuery}
+              onChange={(e) => setGroupQuery(e.target.value)}
+              autoFocus
+            />
+            <div className="chat-list" style={{ margin: '0 -22px' }}>
+              {publicGroups
+                .filter((g) => (g.name || '').toLowerCase().includes(groupQuery.toLowerCase()))
+                .map((g) => (
+                  <div key={g.id} className="chat" onClick={() => joinPublicGroup(g)}>
+                    <AvatarBox src={g.image_url} id={g.id} fallbackLetter={(g.name || "G")[0]?.toUpperCase()} className="photo" />
+                    <div className="chat-info">
+                      <div className="row">
+                        <div className="name">{g.name}</div>
+                      </div>
+                      <div className="preview">{g.invite_requires_approval ? 'pedir pra entrar' : 'entrar'}</div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
         {groupsView === 'community-root' && (
           <>
             <div className="new-conv-list">
@@ -2607,6 +2675,30 @@ export function ChatList({
                 <div className="option-icon"><IconSearch size={20} /></div>
                 <span>Buscar comunidades</span>
               </div>
+            </div>
+            <label className="section-label">
+              Comunidades em alta
+            </label>
+            <div className="chat-list">
+              {trendingCommunities.length === 0 && <div className="empty">Nenhuma comunidade ainda</div>}
+              {trendingCommunities.map((c) => (
+                <div
+                  key={c.id}
+                  className="chat"
+                  onClick={() => {
+                    onLeaveGroupsPanel('community-root')
+                    onSelectCommunity(c)
+                  }}
+                >
+                  <AvatarBox src={c.image_url} id={c.id} fallbackLetter={(c.name || "C")[0]?.toUpperCase()} className="photo" />
+                  <div className="chat-info">
+                    <div className="row">
+                      <div className="name">{c.name}</div>
+                    </div>
+                    <div className="preview">{c.comment_count} {c.comment_count === 1 ? 'comentário' : 'comentários'}</div>
+                  </div>
+                </div>
+              ))}
             </div>
             <label className="section-label">
               Minhas comunidades
@@ -2655,6 +2747,15 @@ export function ChatList({
             <button type="button" disabled={newGroupImageUploading} onClick={() => newGroupImageInputRef.current?.click()}>
               {newGroupImageUploading ? 'enviando...' : newGroupImageUrl ? 'Trocar foto' : 'Escolher foto (opcional)'}
             </button>
+            <label style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={newGroupIsPublic}
+                onChange={(e) => setNewGroupIsPublic(e.target.checked)}
+                style={{ width: 'auto' }}
+              />
+              Grupo público (aparece na busca, qualquer um pode entrar)
+            </label>
             <button type="button" disabled={groupsBusy} onClick={createGroup2}>Criar</button>
             {groupsError && <span className="auth-error">{groupsError}</span>}
           </div>

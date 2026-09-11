@@ -33,6 +33,7 @@ export type Conversation = {
   invite_permission?: 'all' | 'owner'
   invite_code?: string | null
   invite_requires_approval?: boolean
+  is_public?: boolean
   created_by: string
   created_at: string
 }

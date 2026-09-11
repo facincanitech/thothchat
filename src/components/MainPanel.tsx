@@ -2654,8 +2654,8 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           </div>
         )}
         <div className="composer-icons">
-          <button ref={emojiBtnRef} type="button" className="compose-btn" onClick={() => setShowEmoji((v) => !v)} title="Emoji"><IconSmile size={20} /></button>
-          <button ref={attachBtnRef} type="button" className="compose-btn" onClick={() => setShowAttachMenu((v) => !v)} title="Anexar"><IconAttach size={20} /></button>
+          <button ref={emojiBtnRef} type="button" className={`compose-btn${showEmoji ? ' active' : ''}`} onClick={() => setShowEmoji((v) => !v)} title="Emoji"><IconSmile size={20} /></button>
+          <button ref={attachBtnRef} type="button" className={`compose-btn${showAttachMenu ? ' active' : ''}`} onClick={() => setShowAttachMenu((v) => !v)} title="Anexar"><IconAttach size={20} /></button>
           <button
             type="button"
             className={`compose-btn${recording ? ' recording' : ''}`}
@@ -2665,7 +2665,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
             <IconMic size={20} />
           </button>
           <button type="button" className="compose-btn" title="Chamar atenção" onClick={sendNudge}><IconNudge size={20} /></button>
-          <button ref={winkBtnRef} type="button" className="compose-btn" title="Mandar um wink" onClick={() => setShowWinks((v) => !v)}><IconHeart size={20} /></button>
+          <button ref={winkBtnRef} type="button" className={`compose-btn${showWinks ? ' active' : ''}`} title="Mandar um wink" onClick={() => setShowWinks((v) => !v)}><IconHeart size={20} /></button>
           <input ref={docInputRef} type="file" hidden onChange={handleAttachFilePicked} />
           <input ref={mediaInputRef} type="file" accept="image/*,video/*" hidden onChange={handleAttachFilePicked} />
           <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" hidden onChange={handleAttachFilePicked} />

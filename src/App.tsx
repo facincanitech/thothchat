@@ -145,6 +145,7 @@ function App() {
     setGroupsOpen(false)
   }
   const [groupsOpen, setGroupsOpen] = useState(false)
+  const [groupsSection, setGroupsSection] = useState<'groups' | 'communities'>('groups')
   const [statusOpen, setStatusOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
@@ -467,6 +468,24 @@ function App() {
       setStatusOpen(false)
       setPanelOpen(false)
       setAccountOpen(false)
+      setGroupsRestoreView('group-root')
+      setGroupsSection('groups')
+      setGroupsOpen(true)
+      try {
+        localStorage.setItem('ferus-visited-groups', '1')
+      } catch {
+        // ignore
+      }
+    })
+  }
+
+  function openCommunities() {
+    requireAuth(() => {
+      setStatusOpen(false)
+      setPanelOpen(false)
+      setAccountOpen(false)
+      setGroupsRestoreView('community-root')
+      setGroupsSection('communities')
       setGroupsOpen(true)
       try {
         localStorage.setItem('ferus-visited-groups', '1')
@@ -522,10 +541,18 @@ function App() {
         onNewConversation={openNewConversation}
         onOpenAccount={openAccount}
         onOpenGroups={openGroups}
+        onOpenCommunities={openCommunities}
         onOpenStatus={openStatus}
         onGoHome={openNudger}
         nudgeCount={nudgers.length}
-        activeSection={statusOpen ? 'status' : accountOpen ? 'account' : panelOpen ? 'new' : groupsOpen || selectedCommunity ? 'groups' : 'chats'}
+        activeSection={
+          statusOpen ? 'status'
+            : accountOpen ? 'account'
+            : panelOpen ? 'new'
+            : groupsOpen ? groupsSection
+            : selectedCommunity ? 'communities'
+            : 'chats'
+        }
       />
       <ChatList
         me={profile}

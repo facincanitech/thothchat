@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { displayName } from '../lib/displayName'
-import { IconBell, IconChat, IconGroup, IconPlus, IconStar, IconStatus, IconUser } from './icons'
+import { IconBell, IconChat, IconGroup, IconHeart, IconPlus, IconStar, IconStatus, IconUser } from './icons'
 import type { Profile } from '../types'
 import thothLogo from '../../logo/toth_chat.png'
 
@@ -11,13 +11,14 @@ type Props = {
   onNewConversation: () => void
   onOpenAccount: () => void
   onOpenGroups: () => void
+  onOpenCommunities: () => void
   onOpenStatus: () => void
   onGoHome: () => void
   nudgeCount: number
-  activeSection: 'chats' | 'new' | 'groups' | 'account' | 'status'
+  activeSection: 'chats' | 'new' | 'groups' | 'communities' | 'account' | 'status'
 }
 
-export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onOpenGroups, onOpenStatus, onGoHome, nudgeCount, activeSection }: Props) {
+export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onOpenGroups, onOpenCommunities, onOpenStatus, onGoHome, nudgeCount, activeSection }: Props) {
   const [pendingCount, setPendingCount] = useState(0)
 
   useEffect(() => {
@@ -68,6 +69,14 @@ export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onOp
     onOpenGroups()
   }
 
+  function handleCommunitiesClick() {
+    if (!me) {
+      onRequireAuth()
+      return
+    }
+    onOpenCommunities()
+  }
+
   function handleStatusClick() {
     if (!me) {
       onRequireAuth()
@@ -112,10 +121,15 @@ export function Rail({ me, onRequireAuth, onNewConversation, onOpenAccount, onOp
         <span className="rail-symbol"><IconStatus size={22} /></span>
         <span className="rail-label">Status</span>
       </button>
-      <button type="button" className="rail-item rail-link" title="Grupos e comunidades" onClick={handleGroupsClick}
+      <button type="button" className="rail-item rail-link" title="Grupos" onClick={handleGroupsClick}
         aria-current={activeSection === 'groups' ? 'page' : undefined}>
         <span className="rail-symbol"><IconGroup /></span>
         <span className="rail-label">Grupos</span>
+      </button>
+      <button type="button" className="rail-item rail-link" title="Comunidades" onClick={handleCommunitiesClick}
+        aria-current={activeSection === 'communities' ? 'page' : undefined}>
+        <span className="rail-symbol"><IconHeart /></span>
+        <span className="rail-label">Comunidades</span>
       </button>
       <div className="spacer" />
       <button
