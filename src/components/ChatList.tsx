@@ -35,7 +35,7 @@ import {
 } from './icons'
 import type { Community, Conversation, PanelView, Profile } from '../types'
 
-type AccountView = 'root' | 'profile' | 'appearance' | 'account' | 'privacy' | 'blocked' | 'terms'
+type AccountView = 'root' | 'profile' | 'appearance' | 'account' | 'privacy' | 'blocked' | 'terms' | 'privacy-policy'
 
 export type GroupsView = 'root' | 'group-root' | 'group-create' | 'community-root' | 'community-create' | 'community-search'
 
@@ -1460,14 +1460,14 @@ export function ChatList({
   }
 
   function accountGoBack() {
-    if (accountView === 'blocked' || accountView === 'terms') setAccountView('privacy')
+    if (accountView === 'blocked' || accountView === 'terms' || accountView === 'privacy-policy') setAccountView('privacy')
     else if (accountView === 'root') onAccountOpenChange(false)
     else setAccountView('root')
   }
 
   const accountTitle =
     accountView === 'root'
-      ? (me ? displayName(me) : '')
+      ? 'Perfil'
       : accountView === 'profile'
         ? 'Conta'
         : accountView === 'appearance'
@@ -1478,7 +1478,9 @@ export function ChatList({
             ? 'Privacidade'
             : accountView === 'terms'
               ? 'Termo de uso'
-              : 'Bloqueados'
+              : accountView === 'privacy-policy'
+                ? 'Política de privacidade'
+                : 'Bloqueados'
 
   async function toggleFavorite(c: ConvWithLabel) {
     if (!me) return
@@ -1531,9 +1533,11 @@ export function ChatList({
     <section className="chats">
       {selectedCommunity ? (
         <div className="community-sidebar">
-          <button type="button" className="icon-btn" onClick={onCommunityBack} style={{ alignSelf: 'flex-start' }}>
-            <IconArrowLeft size={20} />
-          </button>
+          <div className="community-sidebar-topbar">
+            <button type="button" className="icon-btn" onClick={onCommunityBack}>
+              <IconArrowLeft size={20} />
+            </button>
+          </div>
           <AvatarBox src={selectedCommunity.image_url} id={selectedCommunity.id} fallbackLetter={(selectedCommunity.name || "C")[0]?.toUpperCase()} className="community-sidebar-photo" />
           <div className="community-sidebar-box">
             <div className="community-sidebar-name">{selectedCommunity.name}</div>
@@ -2160,7 +2164,6 @@ export function ChatList({
             <div className="appearance-separator" />
 
             <label style={{ marginTop: 14 }}>Estilo do nome</label>
-            <span className="invite-code">como seu nome aparece no chat pra todo mundo</span>
 
             <div className="name-style-preview">
               <StyledName
@@ -2213,7 +2216,6 @@ export function ChatList({
             <div className="appearance-separator" />
 
             <label style={{ marginTop: 14 }}>Aparência do app</label>
-            <span className="invite-code">isso é só pra você — muda a cara do app no seu aparelho</span>
 
             <ColorField label="Fundo" value={me.app_bg_color} onPick={(v) => setAppColor('app_bg_color', v)} />
             <ColorField label="Barra lateral" value={me.app_sidebar_color} onPick={(v) => setAppColor('app_sidebar_color', v)} />
@@ -2318,7 +2320,7 @@ export function ChatList({
                 </>
               ) : (
                 <>
-                  <button type="button" onClick={switchAccount}>
+                  <button type="button" className="account-switch" onClick={switchAccount}>
                     Trocar de conta
                   </button>
                   <button type="button" className="account-signout" onClick={() => setConfirmSignOut(true)} style={{ marginTop: 6 }}>
@@ -2361,6 +2363,45 @@ export function ChatList({
               <div className="option-icon"><IconKey size={20} /></div>
               <span>Termo de uso</span>
             </div>
+            <div className="new-conv-option" onClick={() => setAccountView('privacy-policy')}>
+              <div className="option-icon"><IconLock size={20} /></div>
+              <span>Política de privacidade</span>
+            </div>
+          </div>
+        )}
+
+        {accountView === 'privacy-policy' && (
+          <div className="new-conv-form terms-text">
+            <p>
+              Coletamos seu nome, foto e e-mail direto da sua conta Google quando você entra no app
+              — é assim que criamos seu perfil, sem precisar de cadastro separado.
+            </p>
+            <p>
+              As mensagens que você manda, os grupos que participa e as comunidades que segue
+              ficam salvos no nosso banco de dados, pra que a conversa continue disponível pra
+              quem participa dela.
+            </p>
+            <p>
+              Fotos, vídeos e áudios que você envia ficam guardados nos nossos servidores
+              (Supabase). Mídia marcada como "temporária" ou "visualização única" é apagada
+              automaticamente depois de aberta ou após 10 minutos.
+            </p>
+            <p>
+              Não vendemos nem compartilhamos seus dados com empresas de publicidade ou terceiros.
+              As únicas exceções são os serviços que fazem o app funcionar (hospedagem do banco de
+              dados, envio de notificação push) — eles só têm acesso ao que é necessário pra essa
+              função específica.
+            </p>
+            <p>
+              Você pode excluir sua conta a qualquer momento em Configurações → Excluir conta. Isso
+              anonimiza seu perfil (nome, foto e outros dados pessoais somem) e desativa seu login
+              permanentemente. Mensagens que você mandou em conversas com outras pessoas continuam
+              existindo pra quem participou delas, só sem seu nome ou foto — igual em qualquer app
+              de mensagens de verdade.
+            </p>
+            <p>
+              Dúvidas sobre seus dados: facincanitech@gmail.com
+            </p>
           </div>
         )}
 
@@ -2446,7 +2487,7 @@ export function ChatList({
                 <span>Comunidade</span>
               </div>
             </div>
-            <label style={{ padding: '0 22px', fontSize: '.7rem', color: '#8696a0', textTransform: 'uppercase' }}>
+            <label className="section-label">
               Comunidades em alta
             </label>
             <div className="chat-list">

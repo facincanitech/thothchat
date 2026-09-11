@@ -497,7 +497,7 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
               <IconPanelLeft size={20} />
             </button>
           )}
-          <button type="button" className="header-action-btn" onClick={isMember ? leaveCommunity : joinCommunity}>
+          <button type="button" className={`header-action-btn${isMember ? ' leave' : ''}`} onClick={isMember ? leaveCommunity : joinCommunity}>
             {isMember ? 'Sair' : 'Participar'}
           </button>
         </div>
@@ -681,34 +681,41 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
 
       {activeTab === 'info' && (
         <section className="messages community-feed community-page">
-          <div className="community-section-heading">
-            <h2>Informações gerais</h2>
-            <p>A identidade e a história da comunidade.</p>
+          <div className="community-info-box">
+            <div className="community-section-heading">
+              <h2>Informações gerais</h2>
+              <p>A identidade e a história da comunidade.</p>
+            </div>
+            <div className="community-info-grid">
+              <div><span>idioma</span><strong>{community.language || '—'}</strong></div>
+              <div><span>criada em</span><strong>{new Date(community.created_at).toLocaleDateString('pt-BR')}</strong></div>
+              <div><span>categoria</span><strong>{community.category || '—'}</strong></div>
+              <div><span>dono</span><strong>{authorLabel(community.created_by)}</strong></div>
+              <div><span>tipo</span><strong>{community.is_private ? 'particular' : 'pública'}</strong></div>
+              <div><span>membros</span><strong>{memberCount}</strong></div>
+            </div>
           </div>
-          <div className="community-info-notice">
+          <div className="community-info-notice community-info-notice-yellow">
             <strong>{community.is_private ? 'Comunidade particular' : 'Comunidade pública'}</strong>
             <span>{community.is_private ? 'Só membros podem ver tópicos e comentários.' : 'Qualquer pessoa pode encontrar e participar.'}</span>
-          </div>
-          {community.description && <p className="community-about-text">{community.description}</p>}
-          <div className="community-info-grid">
-            <div><span>idioma</span><strong>{community.language || '—'}</strong></div>
-            <div><span>criada em</span><strong>{new Date(community.created_at).toLocaleDateString('pt-BR')}</strong></div>
-            <div><span>categoria</span><strong>{community.category || '—'}</strong></div>
-            <div><span>dono</span><strong>{authorLabel(community.created_by)}</strong></div>
-            <div><span>tipo</span><strong>{community.is_private ? 'particular' : 'pública'}</strong></div>
-            <div><span>membros</span><strong>{memberCount}</strong></div>
           </div>
         </section>
       )}
 
       {activeTab === 'members' && (
         <section className="messages community-feed community-page">
+          <div className="community-members-box">
           <div className="community-section-heading">
             <h2>Membros</h2>
             <p>{memberCount} {memberCount === 1 ? 'participante' : 'participantes'} nesta comunidade.</p>
           </div>
           <div className="member-table community-member-page">
-            {memberList.map((m) => (
+            {[...memberList]
+              .sort((a, b) => {
+                const rank = (m: MemberProfile) => (m.id === community.created_by ? 0 : m.is_editor ? 1 : 2)
+                return rank(a) - rank(b)
+              })
+              .map((m) => (
               <div key={m.id} className="member-table-row">
                 <div className="member-table-name">
                   {displayName(m)}
@@ -735,6 +742,7 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
               </div>
             ))}
           </div>
+          </div>
         </section>
       )}
 
@@ -746,6 +754,7 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
           </div>
           {isManager ? (
           <>
+          <div className="community-settings-box">
           <div className="settings-community-identity">
             <input ref={imageInputRef} type="file" accept="image/*" hidden onChange={uploadCommunityImage} />
             <div
@@ -831,6 +840,7 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
               )}
             </div>
             </details>
+          </div>
           </>
           ) : (
             <div className="community-info-notice">
