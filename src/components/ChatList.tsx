@@ -1252,14 +1252,8 @@ export function ChatList({
     setAvatarUploading(true)
     setAccountError(null)
     try {
-      const path = `${me.id}/avatar`
-      const { error: uploadErr } = await supabase.storage
-        .from('avatars')
-        .upload(path, file, { upsert: true, cacheControl: '3600' })
-      if (uploadErr) throw uploadErr
-
-      const { data } = supabase.storage.from('avatars').getPublicUrl(path)
-      const avatar_url = `${data.publicUrl}?t=${Date.now()}`
+      const url = await uploadImage(file, me.id, 'avatar')
+      const avatar_url = `${url}?t=${Date.now()}`
 
       const { error: updateErr } = await supabase.from('profiles').update({ avatar_url }).eq('id', me.id)
       if (updateErr) throw updateErr
@@ -2019,12 +2013,16 @@ export function ChatList({
               placeholder="seu nome de exibição"
               value={displayNameDraft}
               onChange={(e) => setDisplayNameDraft(e.target.value)}
+              onBlur={saveProfile}
+              onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
             />
 
             <label style={{ marginTop: 10 }}>Nome de usuário</label>
             <input
               value={usernameDraft}
               onChange={(e) => setUsernameDraft(e.target.value)}
+              onBlur={saveProfile}
+              onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
             />
 
             <label style={{ marginTop: 10 }}>Status</label>
@@ -2032,6 +2030,8 @@ export function ChatList({
               placeholder="What's happening?"
               value={statusDraft}
               onChange={(e) => setStatusDraft(e.target.value)}
+              onBlur={saveProfile}
+              onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
             />
 
             <label style={{ marginTop: 10 }}>Idade</label>
@@ -2040,6 +2040,8 @@ export function ChatList({
               placeholder="idade"
               value={ageDraft}
               onChange={(e) => setAgeDraft(e.target.value)}
+              onBlur={saveProfile}
+              onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
             />
 
             <label style={{ marginTop: 10 }}>Cidade</label>
@@ -2047,11 +2049,11 @@ export function ChatList({
               placeholder="sua cidade"
               value={cityDraft}
               onChange={(e) => setCityDraft(e.target.value)}
+              onBlur={saveProfile}
+              onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
             />
             {accountError && <span className="auth-error">{accountError}</span>}
-            <button type="button" disabled={accountSaving} onClick={saveProfile} style={{ marginTop: 10 }}>
-              {accountSaving ? 'salvando...' : 'Salvar'}
-            </button>
+            {accountSaving && <span style={{ fontSize: '.75rem', color: '#8696a0', marginTop: 8 }}>salvando...</span>}
           </div>
         )}
 
