@@ -66,6 +66,7 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([])
   const pendingOfferRef = useRef<RTCSessionDescriptionInit | null>(null)
   const ringTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const remoteAudioRef = useRef<HTMLAudioElement>(null)
@@ -96,6 +97,29 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
       clearTimeout(ringTimeoutRef.current)
       ringTimeoutRef.current = null
     }
+  }
+
+  function clearConnectTimeout() {
+    if (connectTimeoutRef.current) {
+      clearTimeout(connectTimeoutRef.current)
+      connectTimeoutRef.current = null
+    }
+  }
+
+  const CONNECT_TIMEOUT_MS = 20000
+
+  function scheduleConnectTimeout(callId: string) {
+    clearConnectTimeout()
+    connectTimeoutRef.current = setTimeout(() => {
+      if (sessionRef.current?.callId === callId && sessionRef.current.status !== 'connected') {
+        alert('Não consegui conectar a chamada. Tenta de novo.')
+        const peerId = sessionRef.current.peer.id
+        const signal: CallSignal = { type: 'call-end', callId, from: me!.id }
+        if (peerChannelRef.current) sendSignal(signal)
+        else sendOneOff(peerId, signal)
+        cleanupCall()
+      }
+    }, CONNECT_TIMEOUT_MS)
   }
 
   function sendOneOff(peerId: string, signal: CallSignal) {
@@ -135,6 +159,7 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
     stopCallAudio()
     setCallOverlayActive(false)
     clearRingTimeout()
+    clearConnectTimeout()
     pcRef.current?.close()
     pcRef.current = null
     localStreamRef.current?.getTracks().forEach((t) => t.stop())
@@ -183,6 +208,7 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === 'connected') {
         clearRingTimeout()
+        clearConnectTimeout()
         setSession((s) => (s ? { ...s, status: 'connected', startedAt: s.startedAt ?? Date.now() } : s))
       } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected' || pc.connectionState === 'closed') {
         if (sessionRef.current?.callId === callId) cleanupCall()
@@ -308,6 +334,7 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
     })
 
     setSession((prev) => (prev ? { ...prev, status: 'connecting' } : prev))
+    scheduleConnectTimeout(s.callId)
   }
 
   function declineIncomingCall() {
@@ -469,6 +496,7 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
             queued.forEach((c) => pcRef.current?.addIceCandidate(new RTCIceCandidate(c)).catch(() => {}))
           })
           setSession((s) => (s ? { ...s, status: 'connecting' } : s))
+          scheduleConnectTimeout(signal.callId)
         } else if (signal.type === 'call-ice') {
           if (pcRef.current?.remoteDescription) {
             pcRef.current.addIceCandidate(new RTCIceCandidate(signal.candidate)).catch(() => {})
