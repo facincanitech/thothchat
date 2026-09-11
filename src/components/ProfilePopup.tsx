@@ -62,6 +62,8 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
   const [friendState, setFriendState] = useState<'idle' | 'sent' | 'friends'>('idle')
   const [loading, setLoading] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [reportStep, setReportStep] = useState<'none' | 'confirm' | 'confirm-block'>('none')
+  const [reporting, setReporting] = useState(false)
 
   const currentId = stack[stack.length - 1]
   const isRoot = stack.length === 1
@@ -69,6 +71,7 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
   useEffect(() => {
     setView('profile')
     setMenuOpen(false)
+    setReportStep('none')
     setLoading(true)
 
     async function load() {
@@ -133,6 +136,13 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
     setFriendState('sent')
   }
 
+  async function submitReport() {
+    setReporting(true)
+    await supabase.from('reports').insert({ reporter_id: me.id, reported_id: currentId })
+    setReporting(false)
+    setReportStep('confirm-block')
+  }
+
   function openPerson(id: string) {
     setStack((prev) => [...prev, id])
   }
@@ -168,6 +178,38 @@ export function ProfilePopup({ me, userId, onClose, onOpenCommunity, blockedIds,
                 <span style={{ padding: '6px 8px', fontSize: '.75rem', color: '#8696a0' }}>bloqueado</span>
               ) : (
                 <button type="button" onClick={() => { onBlock(currentId); setMenuOpen(false) }}>Bloquear</button>
+              )}
+              <button type="button" onClick={() => { setMenuOpen(false); setReportStep('confirm') }}>Denunciar</button>
+            </div>
+          </>
+        )}
+
+        {(reportStep === 'confirm' || reportStep === 'confirm-block') && (
+          <>
+            <div style={{ position: 'absolute', inset: 0, zIndex: 5 }} onClick={() => setReportStep('none')} />
+            <div className="request-menu" style={{ top: 60, right: 12, left: 12, zIndex: 6, textAlign: 'center' }}>
+              {reportStep === 'confirm' && (
+                <>
+                  <p style={{ fontSize: '.8rem', margin: '4px 0 8px' }}>Tem certeza que quer denunciar essa pessoa?</p>
+                  <button type="button" className="google-btn" disabled={reporting} onClick={submitReport} style={{ width: '100%', marginBottom: 6 }}>
+                    {reporting ? 'Enviando...' : 'Sim, denunciar'}
+                  </button>
+                  <button type="button" onClick={() => setReportStep('none')}>Cancelar</button>
+                </>
+              )}
+              {reportStep === 'confirm-block' && (
+                <>
+                  <p style={{ fontSize: '.8rem', margin: '4px 0 8px' }}>Denúncia enviada. Quer também bloquear essa pessoa?</p>
+                  <button
+                    type="button"
+                    className="google-btn"
+                    style={{ width: '100%', marginBottom: 6 }}
+                    onClick={() => { onBlock(currentId); setReportStep('none') }}
+                  >
+                    Sim, bloquear
+                  </button>
+                  <button type="button" onClick={() => setReportStep('none')}>Não, obrigado</button>
+                </>
               )}
             </div>
           </>
