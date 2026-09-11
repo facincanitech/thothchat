@@ -16,7 +16,7 @@ export function AuthModal({ onClose }: Props) {
       : `${window.location.origin}${import.meta.env.BASE_URL}`
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo },
+      options: { redirectTo, queryParams: { prompt: 'select_account' } },
     })
     if (oauthError) setError(oauthError.message)
   }

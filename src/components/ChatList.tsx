@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Capacitor } from '@capacitor/core'
 import { supabase } from '../lib/supabase'
 import { getErrorMessage } from '../lib/errors'
 import { sanitizeImageUrl } from '../lib/imageUrl'
@@ -1447,6 +1448,17 @@ export function ChatList({
     }
   }
 
+  async function switchAccount() {
+    await supabase.auth.signOut()
+    const redirectTo = Capacitor.isNativePlatform()
+      ? 'ferus://callback'
+      : `${window.location.origin}${import.meta.env.BASE_URL}`
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo, queryParams: { prompt: 'select_account' } },
+    })
+  }
+
   function accountGoBack() {
     if (accountView === 'blocked' || accountView === 'terms') setAccountView('privacy')
     else if (accountView === 'root') onAccountOpenChange(false)
@@ -2289,9 +2301,14 @@ export function ChatList({
                   </button>
                 </>
               ) : (
-                <button type="button" className="account-signout" onClick={() => setConfirmSignOut(true)}>
-                  Sair
-                </button>
+                <>
+                  <button type="button" onClick={switchAccount}>
+                    Trocar de conta
+                  </button>
+                  <button type="button" className="account-signout" onClick={() => setConfirmSignOut(true)} style={{ marginTop: 6 }}>
+                    Sair
+                  </button>
+                </>
               )}
             </div>
 

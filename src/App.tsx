@@ -181,6 +181,11 @@ function App() {
       if (!s) {
         setProfile(null)
         setSelected(null)
+        try {
+          localStorage.removeItem('flux-last-user-id')
+        } catch {
+          // ignore
+        }
       } else {
         setAuthOpen(false)
       }
