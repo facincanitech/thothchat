@@ -440,6 +440,7 @@ export function ChatList({
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ conv: ConvWithLabel; x: number; y: number } | null>(null)
   const [confirmDeleteConv, setConfirmDeleteConv] = useState<ConvWithLabel | null>(null)
+  const [quickMenuOpen, setQuickMenuOpen] = useState(false)
 
   const [accountView, setAccountView] = useState<AccountView>('root')
   const pendingAccountViewRef = useRef<AccountView | null>(null)
@@ -1587,7 +1588,41 @@ export function ChatList({
               <div className="brand">ThothChat</div>
               <div className="brand-caption">Conversa de verdade, ao vivo.</div>
             </div>
-            <div style={{ marginLeft: 'auto' }}>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 2, position: 'relative' }}>
+              <button type="button" className="icon-btn" title="Atalhos" onClick={() => setQuickMenuOpen((v) => !v)}>
+                <IconMore size={20} />
+              </button>
+              {quickMenuOpen && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 5 }} onClick={() => setQuickMenuOpen(false)} />
+                  <div className="request-menu" style={{ top: 44, right: 0, zIndex: 6 }}>
+                    <button
+                      type="button"
+                      onClick={() => { setQuickMenuOpen(false); onGroupsOpenChange(true); setGroupsView('group-create') }}
+                    >
+                      <IconGroup size={16} /> Criar grupo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setQuickMenuOpen(false); onGroupsOpenChange(true); setGroupsView('community-create') }}
+                    >
+                      <IconHeart size={16} /> Criar comunidade
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setQuickMenuOpen(false); onGroupsOpenChange(true); setGroupsView('community-root') }}
+                    >
+                      <IconHeart size={16} /> Comunidades
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setQuickMenuOpen(false); onPanelOpenChange(true); onPanelViewChange('contact') }}
+                    >
+                      <IconUser size={16} /> Novo contato
+                    </button>
+                  </div>
+                </>
+              )}
               <NotificationCenter
                 onOpenAppearance={() => {
                   pendingAccountViewRef.current = 'appearance'
@@ -1879,12 +1914,6 @@ export function ChatList({
 
         {panelView === 'friends' && friendsView === 'list' && (
           <>
-            <div className="new-conv-list">
-              <div className="new-conv-option" onClick={() => setFriendsView('add')}>
-                <div className="option-icon"><IconUser size={20} /></div>
-                <span>Adicionar amigo</span>
-              </div>
-            </div>
             {incoming.length > 0 && (
               <>
                 <label style={{ padding: '0 22px', fontSize: '.7rem', color: '#8696a0', textTransform: 'uppercase' }}>
