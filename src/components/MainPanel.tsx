@@ -2634,6 +2634,7 @@ export function MainPanel({ me, conversation, onBack, onConversationUpdate, bloc
           <div key={userId} className="message in live">
             <div className="bubble">
               <span className="author-label">{members[userId] ? displayName(members[userId]) : '...'}</span>
+              <span className="live-typing-label">digitando...</span>
               {text}
             </div>
           </div>
