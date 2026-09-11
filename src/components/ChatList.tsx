@@ -1610,9 +1610,9 @@ export function ChatList({
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setQuickMenuOpen(false); onGroupsOpenChange(true); setGroupsView('community-root') }}
+                      onClick={() => { setQuickMenuOpen(false); onGroupsOpenChange(true); setCommunityQuery(''); setGroupsView('community-search') }}
                     >
-                      <IconHeart size={16} /> Comunidades
+                      <IconHeart size={16} /> Buscar comunidades
                     </button>
                     <button
                       type="button"
@@ -1919,7 +1919,7 @@ export function ChatList({
                 <label style={{ padding: '0 22px', fontSize: '.7rem', color: '#8696a0', textTransform: 'uppercase' }}>
                   Pedidos recebidos
                 </label>
-                <div className="friend-request-list" style={{ padding: '0 22px 10px' }}>
+                <div className="friend-request-list" style={{ margin: '0 8px 10px' }}>
                   {incoming.map((req) => (
                     <div key={req.id} className="friend-request-row">
                       <div className="photo" style={{ width: 40, height: 40 }}>
@@ -1936,7 +1936,7 @@ export function ChatList({
                 </div>
               </>
             )}
-            <div className="friend-request-list" style={{ padding: '0 22px', marginTop: 8, borderTop: '1px solid var(--line-2)', paddingTop: 12 }}>
+            <div className="friend-request-list" style={{ margin: '8px 8px 0', borderTop: '1px solid var(--line-2)', paddingTop: 12 }}>
               {friends.length === 0 && <span className="invite-code">você ainda não tem amigos</span>}
               {friends.map((f) => (
                 <div key={f.id} className="friend-request-row">
@@ -2522,7 +2522,11 @@ export function ChatList({
           >
             <IconArrowLeft size={20} />
           </button>
-          <div className="brand" style={{ fontSize: 18 }}>ThothChat - Grupos</div>
+          <div className="brand" style={{ fontSize: 18 }}>
+            {groupsView === 'community-root' || groupsView === 'community-create' || groupsView === 'community-search'
+              ? 'ThothChat - Comunidades'
+              : 'ThothChat - Grupos'}
+          </div>
         </div>
 
         {groupsView === 'root' && (
