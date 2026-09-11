@@ -164,9 +164,14 @@ const FILTER_LABELS: Record<FilterKey, string> = {
   all: 'Todos',
   favorites: 'Favoritos',
   archived: 'Arquivo',
-  group: 'Grupo',
+  group: 'Grupos',
   communities: 'Comunidades',
 }
+
+const COMMUNITY_CATEGORIES = [
+  'Geral', 'Jogos', 'Música', 'Estudos', 'Tecnologia',
+  'Esportes', 'Arte', 'Humor', 'Notícias', 'Filmes e séries',
+]
 
 type Props = {
   me: Profile | null
@@ -290,8 +295,6 @@ export function ChatList({
   const [newCommunityDesc, setNewCommunityDesc] = useState('')
   const [newCommunityCategory, setNewCommunityCategory] = useState('')
   const [newCommunityImageUrl, setNewCommunityImageUrl] = useState('')
-  const [newCommunityImageUploading, setNewCommunityImageUploading] = useState(false)
-  const newCommunityImageInputRef = useRef<HTMLInputElement>(null)
   const [newCommunityLanguage, setNewCommunityLanguage] = useState('Português (Brasil)')
   const [newCommunityIsPrivate, setNewCommunityIsPrivate] = useState(false)
   const [communityQuery, setCommunityQuery] = useState('')
@@ -1185,21 +1188,6 @@ export function ChatList({
     } finally {
       setNewGroupImageUploading(false)
       if (newGroupImageInputRef.current) newGroupImageInputRef.current.value = ''
-    }
-  }
-
-  async function uploadNewCommunityImage(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file || !me) return
-    setNewCommunityImageUploading(true)
-    try {
-      const url = await uploadImage(file, me.id, 'community')
-      setNewCommunityImageUrl(url)
-    } catch (err) {
-      setGroupsError(getErrorMessage(err))
-    } finally {
-      setNewCommunityImageUploading(false)
-      if (newCommunityImageInputRef.current) newCommunityImageInputRef.current.value = ''
     }
   }
 
@@ -2582,7 +2570,7 @@ export function ChatList({
                 <span>Criar grupo</span>
               </div>
             </div>
-            <label style={{ padding: '0 22px', fontSize: '.7rem', color: '#8696a0', textTransform: 'uppercase' }}>
+            <label className="section-label">
               Meus grupos
             </label>
             <div className="chat-list">
@@ -2620,7 +2608,7 @@ export function ChatList({
                 <span>Buscar comunidades</span>
               </div>
             </div>
-            <label style={{ padding: '0 22px', fontSize: '.7rem', color: '#8696a0', textTransform: 'uppercase' }}>
+            <label className="section-label">
               Minhas comunidades
             </label>
             <div className="chat-list">
@@ -2682,22 +2670,21 @@ export function ChatList({
               autoFocus
             />
             <label style={{ marginTop: 10 }}>Categoria</label>
-            <input
-              placeholder="categoria (opcional)"
+            <select
               value={newCommunityCategory}
               onChange={(e) => setNewCommunityCategory(e.target.value)}
-            />
+            >
+              <option value="">Selecione uma categoria</option>
+              {COMMUNITY_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
             <label style={{ marginTop: 10 }}>Descrição</label>
             <input
               placeholder="descrição (opcional)"
               value={newCommunityDesc}
               onChange={(e) => setNewCommunityDesc(e.target.value)}
             />
-            <label style={{ marginTop: 10 }}>Foto</label>
-            <input ref={newCommunityImageInputRef} type="file" accept="image/*" hidden onChange={uploadNewCommunityImage} />
-            <button type="button" disabled={newCommunityImageUploading} onClick={() => newCommunityImageInputRef.current?.click()}>
-              {newCommunityImageUploading ? 'enviando...' : newCommunityImageUrl ? 'Trocar foto' : 'Escolher foto (opcional)'}
-            </button>
             <label style={{ marginTop: 10 }}>Idioma</label>
             <input
               placeholder="idioma"
