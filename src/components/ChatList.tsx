@@ -439,6 +439,7 @@ export function ChatList({
   const [friends, setFriends] = useState<Friend[]>([])
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ conv: ConvWithLabel; x: number; y: number } | null>(null)
+  const [confirmDeleteConv, setConfirmDeleteConv] = useState<ConvWithLabel | null>(null)
 
   const [accountView, setAccountView] = useState<AccountView>('root')
   const pendingAccountViewRef = useRef<AccountView | null>(null)
@@ -1021,7 +1022,11 @@ export function ChatList({
   function handleContextMenu(e: React.MouseEvent, conv: ConvWithLabel) {
     e.preventDefault()
     const rect = e.currentTarget.getBoundingClientRect()
-    setContextMenu({ conv, x: rect.left + 12, y: e.clientY })
+    const estimatedMenuHeight = 230
+    const y = e.clientY + estimatedMenuHeight > window.innerHeight
+      ? Math.max(8, e.clientY - estimatedMenuHeight)
+      : e.clientY
+    setContextMenu({ conv, x: rect.left + 12, y })
   }
 
   function goBack() {
@@ -1460,7 +1465,8 @@ export function ChatList({
   }
 
   function accountGoBack() {
-    if (accountView === 'blocked' || accountView === 'terms' || accountView === 'privacy-policy') setAccountView('privacy')
+    if (accountView === 'terms' || accountView === 'privacy-policy') setAccountView('privacy')
+    else if (accountView === 'blocked') setAccountView('account')
     else if (accountView === 'root') onAccountOpenChange(false)
     else setAccountView('root')
   }
@@ -1477,9 +1483,9 @@ export function ChatList({
           : accountView === 'privacy'
             ? 'Privacidade'
             : accountView === 'terms'
-              ? 'Termo de uso'
+              ? 'Termos de Uso'
               : accountView === 'privacy-policy'
-                ? 'Política de privacidade'
+                ? 'Política de Privacidade'
                 : 'Bloqueados'
 
   async function toggleFavorite(c: ConvWithLabel) {
@@ -1826,8 +1832,27 @@ export function ChatList({
             <button type="button" onClick={() => toggleFavorite(contextMenu.conv)}>
               <IconHeart size={16} /> {contextMenu.conv.isFavorite ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos'}
             </button>
-            <button type="button" className="danger" onClick={() => deleteConversation(contextMenu.conv)}>
+            <button type="button" className="danger" onClick={() => { setConfirmDeleteConv(contextMenu.conv); setContextMenu(null) }}>
               <IconTrash size={16} /> Apagar conversa
+            </button>
+          </div>
+        </div>
+      )}
+
+      {confirmDeleteConv && (
+        <div className="modal-backdrop" onClick={() => setConfirmDeleteConv(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2>Apagar conversa?</h2>
+            <p>Isso remove "{confirmDeleteConv.label}" da sua lista. Se a pessoa mandar mensagem de novo, a conversa reaparece.</p>
+            <button
+              type="button"
+              className="settings-danger-btn"
+              onClick={() => { deleteConversation(confirmDeleteConv); setConfirmDeleteConv(null) }}
+            >
+              <IconTrash size={18} /> Sim, apagar
+            </button>
+            <button type="button" onClick={() => setConfirmDeleteConv(null)} style={{ marginTop: 8 }}>
+              Cancelar
             </button>
           </div>
         </div>
@@ -2023,7 +2048,7 @@ export function ChatList({
                 <div className="option-icon"><IconLock size={20} /></div>
                 <div>
                   <div>Privacidade</div>
-                  <div className="option-subtitle">Contatos bloqueados, termo de uso</div>
+                  <div className="option-subtitle">Termos de Uso, Política de Privacidade</div>
                 </div>
               </div>
             </div>
@@ -2282,6 +2307,11 @@ export function ChatList({
             <input value={me.email} disabled />
             <span className="invite-code">notificações de segurança e mais dados da conta chegam em breve</span>
 
+            <div className="new-conv-option" style={{ margin: '10px 0 0', padding: '14px 0' }} onClick={openBlocked}>
+              <div className="option-icon"><IconLock size={20} /></div>
+              <span>Contatos bloqueados</span>
+            </div>
+
             <label style={{ marginTop: 10 }}>App</label>
             <button
               type="button"
@@ -2355,17 +2385,17 @@ export function ChatList({
 
         {accountView === 'privacy' && (
           <div className="new-conv-list">
-            <div className="new-conv-option" onClick={openBlocked}>
-              <div className="option-icon"><IconLock size={20} /></div>
-              <span>Contatos bloqueados</span>
-            </div>
             <div className="new-conv-option" onClick={() => setAccountView('terms')}>
               <div className="option-icon"><IconKey size={20} /></div>
-              <span>Termo de uso</span>
+              <span>Termos de Uso</span>
             </div>
             <div className="new-conv-option" onClick={() => setAccountView('privacy-policy')}>
               <div className="option-icon"><IconLock size={20} /></div>
-              <span>Política de privacidade</span>
+              <span>Política de Privacidade</span>
+            </div>
+            <div className="new-conv-option">
+              <div className="option-icon"><IconUser size={20} /></div>
+              <span>Contato: facincanitech@gmail.com</span>
             </div>
           </div>
         )}
@@ -2382,15 +2412,12 @@ export function ChatList({
               quem participa dela.
             </p>
             <p>
-              Fotos, vídeos e áudios que você envia ficam guardados nos nossos servidores
-              (Supabase). Mídia marcada como "temporária" ou "visualização única" é apagada
-              automaticamente depois de aberta ou após 10 minutos.
+              Fotos, vídeos e áudios que você envia ficam guardados nos nossos servidores. Mídia
+              marcada como "temporária" ou "visualização única" é apagada automaticamente depois
+              de aberta ou após 10 minutos.
             </p>
             <p>
               Não vendemos nem compartilhamos seus dados com empresas de publicidade ou terceiros.
-              As únicas exceções são os serviços que fazem o app funcionar (hospedagem do banco de
-              dados, envio de notificação push) — eles só têm acesso ao que é necessário pra essa
-              função específica.
             </p>
             <p>
               Você pode excluir sua conta a qualquer momento em Configurações → Excluir conta. Isso
@@ -2398,9 +2425,6 @@ export function ChatList({
               permanentemente. Mensagens que você mandou em conversas com outras pessoas continuam
               existindo pra quem participou delas, só sem seu nome ou foto — igual em qualquer app
               de mensagens de verdade.
-            </p>
-            <p>
-              Dúvidas sobre seus dados: facincanitech@gmail.com
             </p>
           </div>
         )}
@@ -2431,9 +2455,6 @@ export function ChatList({
             <p>
               Quebra de sigilo dessas informações só ocorre mediante requisição jurídica
               (ordem judicial ou solicitação de autoridade competente).
-            </p>
-            <p>
-              Contato: facincanitech@gmail.com
             </p>
           </div>
         )}

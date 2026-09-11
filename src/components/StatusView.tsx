@@ -97,14 +97,6 @@ export function StatusView({ me, open, onBack }: { me: Profile; open: boolean; o
   }, [viewerQueue, viewerIndex])
 
   useEffect(() => {
-    if (!viewerQueue || viewerPaused) return
-    const current = viewerQueue[viewerIndex]
-    if (!current || current.kind === 'video') return
-    const t = setTimeout(() => advanceViewer(), 5000)
-    return () => clearTimeout(t)
-  }, [viewerQueue, viewerIndex, viewerPaused])
-
-  useEffect(() => {
     setViewerPaused(false)
   }, [viewerIndex])
 
@@ -350,6 +342,7 @@ export function StatusView({ me, open, onBack }: { me: Profile; open: boolean; o
                     key={viewerIndex}
                     className="status-progress-fill"
                     style={{ animationPlayState: viewerPaused ? 'paused' : 'running' }}
+                    onAnimationEnd={advanceViewer}
                   />
                 ) : null}
               </div>
