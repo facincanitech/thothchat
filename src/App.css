@@ -887,13 +887,14 @@ body{
 }
 
 .quick-actions-menu{
-  display:flex;flex-direction:row;flex-wrap:wrap;justify-content:center;min-width:0;max-width:260px;padding:8px;gap:4px;
+  display:flex;flex-direction:column;min-width:190px;padding:6px;gap:1px;
 }
 .quick-actions-menu button{
-  width:72px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;
-  padding:8px 4px;white-space:normal;
+  width:100%;display:flex;flex-direction:row;align-items:center;gap:10px;text-align:left;
+  padding:8px 6px;white-space:nowrap;
 }
-.quick-actions-menu button span{font-size:.6rem;line-height:1.1;color:var(--text-base)}
+.quick-actions-menu button span{font-size:.72rem;color:var(--text-base)}
+.quick-actions-menu button svg{flex-shrink:0}
 [data-theme="light"] .quick-actions-menu button:hover{background:var(--bg-surface-2)}
 
 .context-menu-backdrop{position:fixed;inset:0;z-index:60}
