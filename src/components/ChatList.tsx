@@ -1167,8 +1167,12 @@ export function ChatList({
   }
 
   useEffect(() => {
+    if (!groupsOpen) setGroupsQuickEntry(false)
+  }, [groupsOpen])
+
+  useEffect(() => {
     if (groupsOpen && me) {
-      setGroupsView('group-root')
+      if (!groupsQuickEntry) setGroupsView('group-root')
       setGroupsError(null)
       setNewGroupName('')
       setNewGroupDesc('')
