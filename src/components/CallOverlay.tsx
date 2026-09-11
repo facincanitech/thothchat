@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { displayName } from '../lib/displayName'
 import { triggerNudgeShake } from '../lib/nudge'
 import { sendPush } from '../lib/pushSend'
-import { ICE_SERVERS, type CallKind, type CallPeer, type CallSignal, type OutgoingCallRequest, type PendingCallRow } from '../lib/call'
+import { fetchIceServers, type CallKind, type CallPeer, type CallSignal, type OutgoingCallRequest, type PendingCallRow } from '../lib/call'
 import { setSpeakerphoneOn, startCallAudio, stopCallAudio, startRingtone, stopRingtone } from '../lib/audioRoute'
 import { setCallOverlayActive } from '../lib/pushNotifications'
 import {
@@ -182,12 +182,13 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
     setSession(null)
   }
 
-  function setupPeerConnection(peerId: string, callId: string, kind: CallKind, stream: MediaStream) {
+  async function setupPeerConnection(peerId: string, callId: string, kind: CallKind, stream: MediaStream) {
     startCallAudio()
     setSpeakerOn(kind === 'video')
     setSpeakerphoneOn(kind === 'video')
 
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS })
+    const iceServers = await fetchIceServers()
+    const pc = new RTCPeerConnection({ iceServers })
     pcRef.current = pc
     stream.getTracks().forEach((t) => pc.addTrack(t, stream))
 
@@ -244,7 +245,7 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
     localStreamRef.current = stream
     if (req.kind === 'video' && localVideoRef.current) localVideoRef.current.srcObject = stream
 
-    const pc = setupPeerConnection(req.peer.id, callId, req.kind, stream)
+    const pc = await setupPeerConnection(req.peer.id, callId, req.kind, stream)
     const offer = await pc.createOffer()
     await pc.setLocalDescription(offer)
 
@@ -316,7 +317,7 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
     localStreamRef.current = stream
     if (s.kind === 'video' && localVideoRef.current) localVideoRef.current.srcObject = stream
 
-    const pc = setupPeerConnection(s.peer.id, s.callId, s.kind, stream)
+    const pc = await setupPeerConnection(s.peer.id, s.callId, s.kind, stream)
     await pc.setRemoteDescription(new RTCSessionDescription(pendingOfferRef.current))
     for (const c of pendingCandidatesRef.current) {
       await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {})
