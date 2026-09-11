@@ -4,7 +4,6 @@ import { displayName } from '../lib/displayName'
 import { uploadImage } from '../lib/uploadImage'
 import { getErrorMessage } from '../lib/errors'
 import { ReplayPlayer, type ReplayEvent } from './ReplayPlayer'
-import { SettingsRow } from './SettingsRow'
 import { AvatarBox } from './AvatarBox'
 import { IconArrowLeft, IconEdit, IconPanelLeft, IconSend, IconSmile, IconTrash, IconUser } from './icons'
 import type { Community, Profile } from '../types'
@@ -52,8 +51,8 @@ type MemberProfile = {
 type Props = {
   me: Profile
   community: Community
-  activeTab: 'home' | 'info'
-  onTabChange: (tab: 'home' | 'info') => void
+  activeTab: 'home' | 'info' | 'members' | 'settings'
+  onTabChange: (tab: 'home' | 'info' | 'members' | 'settings') => void
   onCommunityUpdate: (patch: Partial<Community>) => void
   onDeleted: () => void
   onBack: () => void
@@ -88,7 +87,6 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
   const imageDragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null)
   const imagePreviewRef = useRef<HTMLDivElement>(null)
   const [imageUploading, setImageUploading] = useState(false)
-  const [showMembers, setShowMembers] = useState(false)
   const [confirmDeleteCommunity, setConfirmDeleteCommunity] = useState(false)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const [editCategory, setEditCategory] = useState('')
@@ -506,7 +504,9 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
 
       <nav className="community-tabs" aria-label="Seções da comunidade">
         <button type="button" aria-pressed={activeTab === 'home'} onClick={() => onTabChange('home')}>Tópicos</button>
-        <button type="button" aria-pressed={activeTab === 'info'} onClick={() => onTabChange('info')}>Sobre a comunidade</button>
+        <button type="button" aria-pressed={activeTab === 'info'} onClick={() => onTabChange('info')}>Informações</button>
+        <button type="button" aria-pressed={activeTab === 'members'} onClick={() => onTabChange('members')}>Membros</button>
+        <button type="button" aria-pressed={activeTab === 'settings'} onClick={() => onTabChange('settings')}>Configurações</button>
       </nav>
 
       {activeTab === 'home' && (
@@ -681,7 +681,72 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
       )}
 
       {activeTab === 'info' && (
+        <section className="messages community-feed community-page">
+          <div className="community-section-heading">
+            <h2>Informações gerais</h2>
+            <p>A identidade e a história da comunidade.</p>
+          </div>
+          <div className="community-info-notice">
+            <strong>{community.is_private ? 'Comunidade particular' : 'Comunidade pública'}</strong>
+            <span>{community.is_private ? 'Só membros podem ver tópicos e comentários.' : 'Qualquer pessoa pode encontrar e participar.'}</span>
+          </div>
+          {community.description && <p className="community-about-text">{community.description}</p>}
+          <div className="community-info-grid">
+            <div><span>idioma</span><strong>{community.language || '—'}</strong></div>
+            <div><span>criada em</span><strong>{new Date(community.created_at).toLocaleDateString('pt-BR')}</strong></div>
+            <div><span>categoria</span><strong>{community.category || '—'}</strong></div>
+            <div><span>dono</span><strong>{authorLabel(community.created_by)}</strong></div>
+            <div><span>tipo</span><strong>{community.is_private ? 'particular' : 'pública'}</strong></div>
+            <div><span>membros</span><strong>{memberCount}</strong></div>
+          </div>
+        </section>
+      )}
+
+      {activeTab === 'members' && (
+        <section className="messages community-feed community-page">
+          <div className="community-section-heading">
+            <h2>Membros</h2>
+            <p>{memberCount} {memberCount === 1 ? 'participante' : 'participantes'} nesta comunidade.</p>
+          </div>
+          <div className="member-table community-member-page">
+            {memberList.map((m) => (
+              <div key={m.id} className="member-table-row">
+                <div className="member-table-name">
+                  {displayName(m)}
+                  {(m.id === community.created_by || m.is_editor || m.id === me.id) && (
+                    <span className="member-table-tags">
+                      {[m.id === community.created_by ? 'dono' : m.is_editor ? 'editor' : null, m.id === me.id ? 'você' : null]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  )}
+                </div>
+                <div className="member-table-email">{m.email}</div>
+                <div className="member-table-date">
+                  {m.joined_at ? new Date(m.joined_at).toLocaleDateString('pt-BR') : '—'}
+                </div>
+                {isOwner && m.id !== community.created_by && (
+                  <div className="member-table-actions">
+                    <button type="button" onClick={() => toggleEditor(m.id, !m.is_editor)}>
+                      {m.is_editor ? 'tirar mod' : 'mod'}
+                    </button>
+                    <button type="button" className="remove-btn" onClick={() => removeParticipant(m.id)}>remover</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {activeTab === 'settings' && (
         <section className="messages community-feed community-settings">
+          <div className="community-section-heading">
+            <h2>Configurações</h2>
+            <p>Imagem, detalhes, convite e privacidade da comunidade.</p>
+          </div>
+          {isManager ? (
+          <>
           <div className="settings-community-identity">
             <input ref={imageInputRef} type="file" accept="image/*" hidden onChange={uploadCommunityImage} />
             <div
@@ -711,8 +776,6 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
             <h2>{community.name}</h2>
             <p className="status">{community.is_private ? 'Comunidade particular' : 'Comunidade pública'} · {memberCount} membros</p>
           </div>
-          <SettingsRow icon={<IconUser size={21} />} title="Membros da comunidade" detail={`${memberCount} participantes · ver e gerenciar`} onClick={() => setShowMembers(true)} />
-          {isManager ? (
             <details className="settings-disclosure">
             <summary><IconEdit size={20} /> Detalhes da comunidade</summary>
             <div className="community-composer">
@@ -769,56 +832,14 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
               )}
             </div>
             </details>
+          </>
           ) : (
-            <div className="community-post">
-              {community.description && <p className="community-post-content">{community.description}</p>}
-              <p className="status">idioma: {community.language || '—'}</p>
-              <p className="status">categoria: {community.category || '—'}</p>
-              <p className="status">tipo: {community.is_private ? 'particular' : 'pública'}</p>
-              <p className="status">criada em: {new Date(community.created_at).toLocaleDateString('pt-BR')}</p>
-              <p className="status">dono: {authorLabel(community.created_by)}</p>
+            <div className="community-info-notice">
+              <strong>Configurações restritas</strong>
+              <span>Somente o dono e os editores podem alterar esta comunidade.</span>
             </div>
           )}
-
-
         </section>
-      )}
-
-      {showMembers && (
-        <div className="modal-backdrop" onClick={() => setShowMembers(false)}>
-          <div className="modal-card group-info-card" onClick={(e) => e.stopPropagation()}>
-            <h2>Membros</h2>
-            <div className="member-table">
-              {memberList.map((m) => (
-                <div key={m.id} className="member-table-row">
-                  <div className="member-table-name">
-                    {displayName(m)}
-                    {(m.id === community.created_by || m.is_editor || m.id === me.id) && (
-                      <span className="member-table-tags">
-                        {[m.id === community.created_by ? 'dono' : m.is_editor ? 'editor' : null, m.id === me.id ? 'você' : null]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </span>
-                    )}
-                  </div>
-                  <div className="member-table-email">{m.email}</div>
-                  <div className="member-table-date">
-                    {m.joined_at ? new Date(m.joined_at).toLocaleDateString('pt-BR') : '—'}
-                  </div>
-                  {isOwner && m.id !== community.created_by && (
-                    <div className="member-table-actions">
-                      <button type="button" onClick={() => toggleEditor(m.id, !m.is_editor)}>
-                        {m.is_editor ? 'tirar mod' : 'mod'}
-                      </button>
-                      <button type="button" className="remove-btn" onClick={() => removeParticipant(m.id)}>remover</button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            <button type="button" className="modal-close" onClick={() => setShowMembers(false)}>fechar</button>
-          </div>
-        </div>
       )}
 
       {replayFor && (

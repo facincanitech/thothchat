@@ -188,8 +188,8 @@ type Props = {
   blockedIds: Set<string>
   onSelectCommunity: (c: Community) => void
   selectedCommunity: Community | null
-  communityTab: 'home' | 'info'
-  onCommunityTabChange: (tab: 'home' | 'info') => void
+  communityTab: 'home' | 'info' | 'members' | 'settings'
+  onCommunityTabChange: (tab: 'home' | 'info' | 'members' | 'settings') => void
   onCommunityBack: () => void
   theme: 'dark' | 'light' | 'contrast'
   onThemeChange: (theme: 'dark' | 'light' | 'contrast') => void
@@ -1541,17 +1541,31 @@ export function ChatList({
           </div>
           <button
             type="button"
-            className={`community-sidebar-nav${communityTab === 'info' ? ' active' : ''}`}
-            onClick={() => onCommunityTabChange('info')}
-          >
-            Sobre a comunidade
-          </button>
-          <button
-            type="button"
             className={`community-sidebar-nav${communityTab === 'home' ? ' active' : ''}`}
             onClick={() => onCommunityTabChange('home')}
           >
             Tópicos
+          </button>
+          <button
+            type="button"
+            className={`community-sidebar-nav${communityTab === 'info' ? ' active' : ''}`}
+            onClick={() => onCommunityTabChange('info')}
+          >
+            Informações
+          </button>
+          <button
+            type="button"
+            className={`community-sidebar-nav${communityTab === 'members' ? ' active' : ''}`}
+            onClick={() => onCommunityTabChange('members')}
+          >
+            Membros
+          </button>
+          <button
+            type="button"
+            className={`community-sidebar-nav${communityTab === 'settings' ? ' active' : ''}`}
+            onClick={() => onCommunityTabChange('settings')}
+          >
+            Configurações
           </button>
         </div>
       ) : (

@@ -131,7 +131,7 @@ function App() {
   const [pendingInviteCode] = useState(() => new URLSearchParams(window.location.search).get('invite'))
   const inviteConsumedRef = useRef(false)
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null)
-  const [communityTab, setCommunityTab] = useState<'home' | 'info'>('home')
+  const [communityTab, setCommunityTab] = useState<'home' | 'info' | 'members' | 'settings'>('home')
   const [authOpen, setAuthOpen] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [panelView, setPanelView] = useState<PanelView>('root')
