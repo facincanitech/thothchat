@@ -479,6 +479,7 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
           )}
           <div className="header-text">
             <div className="header-name">{community.name}</div>
+            {community.description && <p className="community-header-description">{community.description}</p>}
             <div className="status community-header-meta">
               {memberCount} {memberCount === 1 ? 'participante' : 'participantes'}
               {community.category ? ` · ${community.category}` : ''}
@@ -511,8 +512,6 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
 
       {activeTab === 'home' && (
       <section className="messages community-feed">
-        {community.description && <p className="community-description">{community.description}</p>}
-
         {isMember && (
           <div className="community-composer community-topic-composer">
             <textarea

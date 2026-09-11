@@ -1535,38 +1535,40 @@ export function ChatList({
             <IconArrowLeft size={20} />
           </button>
           <AvatarBox src={selectedCommunity.image_url} id={selectedCommunity.id} fallbackLetter={(selectedCommunity.name || "C")[0]?.toUpperCase()} className="community-sidebar-photo" />
-          <div className="community-sidebar-name">{selectedCommunity.name}</div>
-          <div className="community-sidebar-count">
-            {communityMemberCount} {communityMemberCount === 1 ? 'membro' : 'membros'}
+          <div className="community-sidebar-box">
+            <div className="community-sidebar-name">{selectedCommunity.name}</div>
+            <div className="community-sidebar-count">
+              {communityMemberCount} {communityMemberCount === 1 ? 'membro' : 'membros'}
+            </div>
+            <button
+              type="button"
+              className={`community-sidebar-nav${communityTab === 'home' ? ' active' : ''}`}
+              onClick={() => onCommunityTabChange('home')}
+            >
+              Tópicos
+            </button>
+            <button
+              type="button"
+              className={`community-sidebar-nav${communityTab === 'info' ? ' active' : ''}`}
+              onClick={() => onCommunityTabChange('info')}
+            >
+              Informações
+            </button>
+            <button
+              type="button"
+              className={`community-sidebar-nav${communityTab === 'members' ? ' active' : ''}`}
+              onClick={() => onCommunityTabChange('members')}
+            >
+              Membros
+            </button>
+            <button
+              type="button"
+              className={`community-sidebar-nav${communityTab === 'settings' ? ' active' : ''}`}
+              onClick={() => onCommunityTabChange('settings')}
+            >
+              Configurações
+            </button>
           </div>
-          <button
-            type="button"
-            className={`community-sidebar-nav${communityTab === 'home' ? ' active' : ''}`}
-            onClick={() => onCommunityTabChange('home')}
-          >
-            Tópicos
-          </button>
-          <button
-            type="button"
-            className={`community-sidebar-nav${communityTab === 'info' ? ' active' : ''}`}
-            onClick={() => onCommunityTabChange('info')}
-          >
-            Informações
-          </button>
-          <button
-            type="button"
-            className={`community-sidebar-nav${communityTab === 'members' ? ' active' : ''}`}
-            onClick={() => onCommunityTabChange('members')}
-          >
-            Membros
-          </button>
-          <button
-            type="button"
-            className={`community-sidebar-nav${communityTab === 'settings' ? ' active' : ''}`}
-            onClick={() => onCommunityTabChange('settings')}
-          >
-            Configurações
-          </button>
         </div>
       ) : (
         <>
