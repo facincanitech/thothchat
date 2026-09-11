@@ -363,8 +363,7 @@ export const CallOverlay = forwardRef<CallOverlayHandle, Props>(function CallOve
       const sender = pcRef.current?.getSenders().find((sd) => sd.track?.kind === 'video')
       if (sender) await sender.replaceTrack(newTrack)
       localStreamRef.current?.addTrack(newTrack)
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = null
+      if (localVideoRef.current && localVideoRef.current.srcObject !== localStreamRef.current) {
         localVideoRef.current.srcObject = localStreamRef.current
       }
       facingModeRef.current = next
