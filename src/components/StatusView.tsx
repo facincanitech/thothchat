@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { displayName } from '../lib/displayName'
 import { statusMediaUrl, resizeStatusImage, assertVideoWithinLimit, uploadStatusMedia } from '../lib/status'
-import { IconArrowLeft, IconPlus, IconSmile, IconTrash, IconUser } from './icons'
+import { IconArrowLeft, IconPaint, IconPlus, IconSmile, IconTrash, IconUser } from './icons'
 import type { Profile, StatusPost } from '../types'
 
 const MAX_STATUSES_PER_DAY = 5
@@ -23,6 +23,9 @@ export function StatusView({ me, open, onBack }: { me: Profile; open: boolean; o
   const [viewerQueue, setViewerQueue] = useState<StatusPost[] | null>(null)
   const [viewerIndex, setViewerIndex] = useState(0)
   const [viewerAuthor, setViewerAuthor] = useState<Profile | null>(null)
+  const [viewerPaused, setViewerPaused] = useState(false)
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const heldRef = useRef(false)
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [showComposer, setShowComposer] = useState(false)
   const [composerText, setComposerText] = useState('')
@@ -94,12 +97,16 @@ export function StatusView({ me, open, onBack }: { me: Profile; open: boolean; o
   }, [viewerQueue, viewerIndex])
 
   useEffect(() => {
-    if (!viewerQueue) return
+    if (!viewerQueue || viewerPaused) return
     const current = viewerQueue[viewerIndex]
     if (!current || current.kind === 'video') return
     const t = setTimeout(() => advanceViewer(), 5000)
     return () => clearTimeout(t)
-  }, [viewerQueue, viewerIndex])
+  }, [viewerQueue, viewerIndex, viewerPaused])
+
+  useEffect(() => {
+    setViewerPaused(false)
+  }, [viewerIndex])
 
   function advanceViewer() {
     if (!viewerQueue) return
@@ -110,6 +117,22 @@ export function StatusView({ me, open, onBack }: { me: Profile; open: boolean; o
   function retreatViewer() {
     if (!viewerQueue) return
     if (viewerIndex > 0) setViewerIndex((i) => i - 1)
+  }
+
+  function handleHoldStart() {
+    heldRef.current = false
+    holdTimerRef.current = setTimeout(() => {
+      heldRef.current = true
+      setViewerPaused(true)
+    }, 200)
+  }
+
+  function handleHoldEnd() {
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current)
+      holdTimerRef.current = null
+    }
+    if (heldRef.current) setViewerPaused(false)
   }
 
   async function deleteStatus(id: string) {
@@ -253,7 +276,7 @@ export function StatusView({ me, open, onBack }: { me: Profile; open: boolean; o
               background: composerBg, display: 'flex', flexDirection: 'column', overflow: 'hidden',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: 12 }}>
+            <div className="status-composer-topbar">
               <button type="button" className="icon-btn" onClick={() => setShowComposer(false)}><IconArrowLeft size={20} /></button>
               <div style={{ display: 'flex', gap: 6 }}>
                 <button type="button" className="icon-btn" onClick={() => setShowComposerEmoji((v) => !v)}><IconSmile size={20} /></button>
@@ -263,7 +286,7 @@ export function StatusView({ me, open, onBack }: { me: Profile; open: boolean; o
                   onClick={() => setComposerBg(BG_COLORS[(BG_COLORS.indexOf(composerBg) + 1) % BG_COLORS.length])}
                   title="Mudar cor de fundo"
                 >
-                  🎨
+                  <IconPaint size={20} />
                 </button>
                 <button
                   type="button"
@@ -307,7 +330,7 @@ export function StatusView({ me, open, onBack }: { me: Profile; open: boolean; o
             {error && <div className="auth-error" style={{ margin: 8, textAlign: 'center' }}>{error}</div>}
 
             <div style={{ padding: 16, display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="button" className="send" disabled={!composerText.trim() || posting} onClick={postTextStatus}>
+              <button type="button" className="send-text" disabled={!composerText.trim() || posting} onClick={postTextStatus}>
                 {posting ? '...' : 'Enviar'}
               </button>
             </div>
@@ -320,7 +343,15 @@ export function StatusView({ me, open, onBack }: { me: Profile; open: boolean; o
           <div style={{ display: 'flex', gap: 4, padding: '10px 12px 0' }}>
             {viewerQueue!.map((item, i) => (
               <div key={item.id} style={{ flex: 1, height: 3, borderRadius: 2, background: 'rgba(255,255,255,.3)', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: i < viewerIndex ? '100%' : i === viewerIndex ? '100%' : '0%', background: '#fff', transition: i === viewerIndex ? 'width 5s linear' : 'none' }} />
+                {i < viewerIndex ? (
+                  <div style={{ height: '100%', width: '100%', background: '#fff' }} />
+                ) : i === viewerIndex && current.kind !== 'video' ? (
+                  <div
+                    key={viewerIndex}
+                    className="status-progress-fill"
+                    style={{ animationPlayState: viewerPaused ? 'paused' : 'running' }}
+                  />
+                ) : null}
               </div>
             ))}
           </div>
@@ -340,8 +371,24 @@ export function StatusView({ me, open, onBack }: { me: Profile; open: boolean; o
             style={{ flex: 1, position: 'relative', display: 'flex' }}
           >
             <div style={{ position: 'absolute', inset: 0, display: 'flex' }}>
-              <button type="button" style={{ flex: 1, background: 'none', border: 0, cursor: 'pointer' }} onClick={retreatViewer} aria-label="Anterior" />
-              <button type="button" style={{ flex: 1, background: 'none', border: 0, cursor: 'pointer' }} onClick={advanceViewer} aria-label="Próximo" />
+              <button
+                type="button"
+                style={{ flex: 1, background: 'none', border: 0, cursor: 'pointer' }}
+                onPointerDown={handleHoldStart}
+                onPointerUp={handleHoldEnd}
+                onPointerLeave={handleHoldEnd}
+                onClick={() => { if (!heldRef.current) retreatViewer() }}
+                aria-label="Anterior"
+              />
+              <button
+                type="button"
+                style={{ flex: 1, background: 'none', border: 0, cursor: 'pointer' }}
+                onPointerDown={handleHoldStart}
+                onPointerUp={handleHoldEnd}
+                onPointerLeave={handleHoldEnd}
+                onClick={() => { if (!heldRef.current) advanceViewer() }}
+                aria-label="Próximo"
+              />
             </div>
             <div style={{ margin: 'auto', maxWidth: '100%', maxHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               {current.kind === 'text' ? (

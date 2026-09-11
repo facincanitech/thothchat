@@ -1882,7 +1882,7 @@ export function ChatList({
                 </div>
               </>
             )}
-            <div className="friend-request-list" style={{ padding: '0 22px' }}>
+            <div className="friend-request-list" style={{ padding: '0 22px', marginTop: 8, borderTop: '1px solid var(--line-2)', paddingTop: 12 }}>
               {friends.length === 0 && <span className="invite-code">você ainda não tem amigos</span>}
               {friends.map((f) => (
                 <div key={f.id} className="friend-request-row">

@@ -784,7 +784,7 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
             <h2>{community.name}</h2>
             <p className="status">{community.is_private ? 'Comunidade particular' : 'Comunidade pública'} · {memberCount} membros</p>
           </div>
-            <details className="settings-disclosure">
+            <details className="settings-disclosure" open>
             <summary><IconEdit size={20} /> Detalhes da comunidade</summary>
             <div className="community-composer">
               <label>Nome</label>
