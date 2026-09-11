@@ -427,19 +427,19 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
   }
 
   return (
-    <main className="main">
-      <header className="chat-header">
+    <main className="main community-main">
+      <header className="chat-header community-header">
         <button type="button" className="back-mobile icon-btn" aria-label="Voltar às comunidades" onClick={onBack}><IconArrowLeft size={20} /></button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 13, cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => onTabChange(activeTab === 'info' ? 'home' : 'info')}>
           <AvatarBox
             src={community.image_url}
             id={community.id}
             fallbackLetter={community.name[0]?.toUpperCase() || 'C'}
-            className="header-photo"
+            className="header-photo community-header-photo"
           />
           <div className="header-text">
             <div className="header-name">{community.name}</div>
-            <div className="status">
+            <div className="status community-header-meta">
               {memberCount} {memberCount === 1 ? 'participante' : 'participantes'}
               {community.category ? ` · ${community.category}` : ''}
             </div>
@@ -472,7 +472,7 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
         {community.description && <p className="community-description">{community.description}</p>}
 
         {isMember && (
-          <div className="community-composer">
+          <div className="community-composer community-topic-composer">
             <textarea
               placeholder="Novo tópico..."
               value={draft}
