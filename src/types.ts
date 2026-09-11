@@ -98,6 +98,7 @@ export type Community = {
   description: string | null
   category: string | null
   image_url: string | null
+  image_position?: string | null
   language: string | null
   is_private: boolean
   invite_code?: string | null

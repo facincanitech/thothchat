@@ -84,6 +84,9 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
   const [reactionPickerFor, setReactionPickerFor] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editImageUrl, setEditImageUrl] = useState('')
+  const [imagePosDraft, setImagePosDraft] = useState('50% 50%')
+  const imageDragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null)
+  const imagePreviewRef = useRef<HTMLDivElement>(null)
   const [imageUploading, setImageUploading] = useState(false)
   const [showMembers, setShowMembers] = useState(false)
   const [confirmDeleteCommunity, setConfirmDeleteCommunity] = useState(false)
@@ -185,12 +188,13 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
   useEffect(() => {
     setEditName(community.name)
     setEditImageUrl(community.image_url || '')
+    setImagePosDraft(community.image_position || '50% 50%')
     setEditCategory(community.category || '')
     setEditLanguage(community.language || '')
     setEditIsPrivate(community.is_private)
     setInfoError(null)
     setConfirmDeleteCommunity(false)
-  }, [community.id, community.name, community.image_url, community.category, community.language, community.is_private])
+  }, [community.id, community.name, community.image_url, community.image_position, community.category, community.language, community.is_private])
 
   function authorLabel(id: string): string {
     const a = authors[id]
@@ -204,14 +208,45 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
     try {
       const url = await uploadImage(file, me.id, 'community')
       setEditImageUrl(url)
-      await supabase.from('communities').update({ image_url: url }).eq('id', community.id)
-      onCommunityUpdate({ image_url: url })
+      setImagePosDraft('50% 50%')
+      await supabase.from('communities').update({ image_url: url, image_position: '50% 50%' }).eq('id', community.id)
+      onCommunityUpdate({ image_url: url, image_position: '50% 50%' })
     } catch (err) {
       setInfoError(getErrorMessage(err))
     } finally {
       setImageUploading(false)
       if (imageInputRef.current) imageInputRef.current.value = ''
     }
+  }
+
+  function parseImagePos(pos: string): [number, number] {
+    const [x, y] = pos.split(' ').map((p) => parseFloat(p))
+    return [Number.isFinite(x) ? x : 50, Number.isFinite(y) ? y : 50]
+  }
+
+  function handleImagePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (!(editImageUrl || community.image_url)) return
+    const [x, y] = parseImagePos(imagePosDraft)
+    imageDragRef.current = { startX: e.clientX, startY: e.clientY, startPosX: x, startPosY: y }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
+  function handleImagePointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    const drag = imageDragRef.current
+    if (!drag || !imagePreviewRef.current) return
+    const rect = imagePreviewRef.current.getBoundingClientRect()
+    const dxPct = ((e.clientX - drag.startX) / rect.width) * 100
+    const dyPct = ((e.clientY - drag.startY) / rect.height) * 100
+    const nextX = Math.min(100, Math.max(0, drag.startPosX + dxPct))
+    const nextY = Math.min(100, Math.max(0, drag.startPosY + dyPct))
+    setImagePosDraft(`${nextX.toFixed(0)}% ${nextY.toFixed(0)}%`)
+  }
+
+  async function handleImagePointerUp() {
+    if (!imageDragRef.current) return
+    imageDragRef.current = null
+    await supabase.from('communities').update({ image_position: imagePosDraft }).eq('id', community.id)
+    onCommunityUpdate({ image_position: imagePosDraft })
   }
 
   async function generateCommunityInviteLink() {
@@ -431,12 +466,19 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
       <header className="chat-header community-header">
         <button type="button" className="back-mobile icon-btn" aria-label="Voltar às comunidades" onClick={onBack}><IconArrowLeft size={20} /></button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 13, cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => onTabChange(activeTab === 'info' ? 'home' : 'info')}>
-          <AvatarBox
-            src={community.image_url}
-            id={community.id}
-            fallbackLetter={community.name[0]?.toUpperCase() || 'C'}
-            className="header-photo community-header-photo"
-          />
+          {community.image_url ? (
+            <div
+              className="header-photo community-header-photo"
+              style={{ backgroundImage: `url(${community.image_url})`, backgroundSize: 'cover', backgroundPosition: community.image_position || '50% 50%' }}
+            />
+          ) : (
+            <AvatarBox
+              src={null}
+              id={community.id}
+              fallbackLetter={community.name[0]?.toUpperCase() || 'C'}
+              className="header-photo community-header-photo"
+            />
+          )}
           <div className="header-text">
             <div className="header-name">{community.name}</div>
             <div className="status community-header-meta">
@@ -643,11 +685,28 @@ export function CommunityView({ me, community, activeTab, onTabChange, onCommuni
           <div className="settings-community-identity">
             <input ref={imageInputRef} type="file" accept="image/*" hidden onChange={uploadCommunityImage} />
             <div
-              onClick={() => isManager && imageInputRef.current?.click()}
-              style={{ cursor: isManager ? 'pointer' : 'default', display: 'inline-block' }}
+              ref={imagePreviewRef}
+              className="group-info-avatar"
+              onClick={() => !imageDragRef.current && isManager && !(editImageUrl || community.image_url) && imageInputRef.current?.click()}
+              onPointerDown={handleImagePointerDown}
+              onPointerMove={handleImagePointerMove}
+              onPointerUp={handleImagePointerUp}
+              onPointerLeave={handleImagePointerUp}
+              style={{
+                cursor: isManager ? ((editImageUrl || community.image_url) ? 'grab' : 'pointer') : 'default',
+                touchAction: 'none',
+                ...((editImageUrl || community.image_url)
+                  ? { backgroundImage: `url(${editImageUrl || community.image_url})`, backgroundSize: 'cover', backgroundPosition: imagePosDraft }
+                  : {}),
+              }}
             >
-              <AvatarBox src={editImageUrl || community.image_url} id={community.id} fallbackLetter={community.name[0] || 'C'} className="group-info-avatar" />
+              {!(editImageUrl || community.image_url) && (community.name[0] || 'C')}
             </div>
+            {isManager && (editImageUrl || community.image_url) && (
+              <button type="button" className="chevron-btn" onClick={() => imageInputRef.current?.click()} style={{ marginBottom: 8 }}>
+                trocar foto
+              </button>
+            )}
             {imageUploading && <p className="status">enviando...</p>}
             <h2>{community.name}</h2>
             <p className="status">{community.is_private ? 'Comunidade particular' : 'Comunidade pública'} · {memberCount} membros</p>
