@@ -1068,7 +1068,7 @@ body{
 }
 
 .community-tabs{display:none}
-.community-main .community-header{min-height:68px;padding-top:10px;padding-bottom:10px}
+.community-main .community-header{min-height:100px;padding-top:10px;padding-bottom:10px}
 .community-main .community-header-photo{display:none}
 .community-main .community-header-meta{display:none}
 .community-feed{display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px max(24px,calc((100% - 780px) / 2))}
