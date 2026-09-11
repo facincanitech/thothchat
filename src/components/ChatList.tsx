@@ -1647,59 +1647,59 @@ export function ChatList({
                   <div className="request-menu quick-actions-menu" style={{ top: 44, right: 0, zIndex: 6 }}>
                     <button
                       type="button"
+                      onClick={() => { setQuickMenuOpen(false); onPanelOpenChange(true); onPanelViewChange('contact') }}
+                    >
+                      <IconUser size={17} />
+                      <span>Novo contato</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => { setQuickMenuOpen(false); setGroupsQuickEntry(true); onGroupsOpenChange(true); setGroupsView('group-create') }}
                     >
-                      <IconGroup size={18} />
+                      <IconGroup size={17} />
                       <span>Criar grupo</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setQuickMenuOpen(false); setGroupsQuickEntry(true); onGroupsOpenChange(true); setGroupsView('group-mine') }}
+                    >
+                      <IconGroup size={17} />
+                      <span>Meus grupos</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setQuickMenuOpen(false); setGroupsQuickEntry(true); onGroupsOpenChange(true); setGroupsView('group-trending') }}
+                    >
+                      <IconGroup size={17} />
+                      <span>Grupos em alta</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => { setQuickMenuOpen(false); setGroupsQuickEntry(true); onGroupsOpenChange(true); setGroupsView('community-create') }}
                     >
-                      <IconHeart size={18} />
+                      <IconHeart size={17} />
                       <span>Criar comunidade</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => { setQuickMenuOpen(false); setGroupsQuickEntry(true); onGroupsOpenChange(true); setCommunityQuery(''); setGroupsView('community-search') }}
                     >
-                      <IconHeart size={18} />
+                      <IconHeart size={17} />
                       <span>Buscar comunidades</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setQuickMenuOpen(false); setGroupsQuickEntry(true); onGroupsOpenChange(true); setGroupsView('group-trending') }}
-                    >
-                      <IconGroup size={18} />
-                      <span>Grupos em alta</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setQuickMenuOpen(false); setGroupsQuickEntry(true); onGroupsOpenChange(true); setGroupsView('group-mine') }}
-                    >
-                      <IconGroup size={18} />
-                      <span>Meus grupos</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setQuickMenuOpen(false); setGroupsQuickEntry(true); onGroupsOpenChange(true); setGroupsView('community-trending') }}
-                    >
-                      <IconHeart size={18} />
-                      <span>Comunidades em alta</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => { setQuickMenuOpen(false); setGroupsQuickEntry(true); onGroupsOpenChange(true); setGroupsView('community-mine') }}
                     >
-                      <IconHeart size={18} />
+                      <IconHeart size={17} />
                       <span>Minhas comunidades</span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setQuickMenuOpen(false); onPanelOpenChange(true); onPanelViewChange('contact') }}
+                      onClick={() => { setQuickMenuOpen(false); setGroupsQuickEntry(true); onGroupsOpenChange(true); setGroupsView('community-trending') }}
                     >
-                      <IconUser size={18} />
-                      <span>Novo contato</span>
+                      <IconHeart size={17} />
+                      <span>Comunidades em alta</span>
                     </button>
                   </div>
                 </>
