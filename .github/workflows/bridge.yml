@@ -1,0 +1,24 @@
+name: Ponte de atualizacao antiga
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar instaladores atuais
+        run: |
+          curl -fL https://github.com/facincanitech/thoth/releases/download/latest/thothchat.apk -o thothchat.apk
+          curl -fL https://github.com/facincanitech/thoth/releases/download/latest/ThothChat-Messenger-Setup.exe -o ThothChat-Messenger-Setup.exe
+      - name: Publicar ponte latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --repo facincanitech/thothchat --cleanup-tag -y || true
+          gh release create latest thothchat.apk ThothChat-Messenger-Setup.exe --repo facincanitech/thothchat --title "Thoth Messenger 1.3.372" --notes "Ponte de atualizacao para instalacoes antigas."
